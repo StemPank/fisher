@@ -1,0 +1,4 @@
+venv/
+pgdata/
+setting.py
+docker-compose.yml
