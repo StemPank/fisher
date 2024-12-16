@@ -27,3 +27,5 @@ if __name__ == "__main__":
     except:
         WebKline.terminate()
         WebKline.join()
+        WebDepth.terminate()
+        WebDepth.join()

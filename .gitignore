@@ -1,4 +1,5 @@
 venv/
 pgdata/
+main/
 setting.py
 docker-compose.yml
