@@ -1,4 +1,5 @@
-import tkinter as tk
+from PyQt5.QtWidgets import QApplication
+import sys
 import multiprocessing
 from multiprocessing import Process, Queue, Manager
 from stream_kline_binance import websocket_kline
@@ -16,23 +17,13 @@ def start_historical_data(queue_kline: Queue, queue_kline_gui: Queue, shared_dat
     historical_data(queue_kline, queue_kline_gui, shared_data)
 
 def start_gui(queue_kline_gui: Queue, queue_depth_gui: Queue, queue_kline: Queue, queue_depth: Queue, 
-              stop_event, processes, shared_data):
+              stop_event, shared_data):
     """Запускаем GUI и добавляем обработчик закрытия."""
-    def finish():
-        """Обработчик закрытия окна GUI."""
-        # Ставим сигнал для завершения
-        stop_event.set()
-        # Завершаем процессы
-        for process in processes:
-            process.terminate()
-            process.join()
-        root.destroy() # ручное закрытие окна и всего приложения
-        print('Закрытие приложения')
-    root = tk.Tk()
-    app = GraphApp(root, queue_kline_gui, queue_depth_gui, queue_kline, queue_depth, shared_data)
-    # Связываем закрытие окна с завершением процессов
-    root.protocol("WM_DELETE_WINDOW", finish)
-    root.mainloop()
+    app = QApplication(sys.argv)
+    main_window = GraphApp(queue_kline_gui, queue_depth_gui, queue_kline, queue_depth, shared_data)  # Инициализируем графическое приложение
+    main_window.show()  # Показываем главное окно
+    sys.exit(app.exec_())  # Запускаем главный цикл приложени
+
 
 
 if __name__ == "__main__":
@@ -56,7 +47,7 @@ if __name__ == "__main__":
         processes=[WebKline, WebDepth, HisKline]
 
         try:
-            start_gui(queue_kline_gui, queue_depth_gui, queue_kline, queue_depth, stop_event, processes, shared_data)
+            start_gui(queue_kline_gui, queue_depth_gui, queue_kline, queue_depth, stop_event, shared_data)
         finally:
             for process in processes:
                 if process.is_alive():
