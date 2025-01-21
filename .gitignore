@@ -1,5 +1,13 @@
-venv/
+__pycache__
+agents/
+init-script/
+
+main/gui/operative_state.pkl
+main/gui/state.pkl
+main/gui/setting/setting.pkl
+main/utils/app.log
+
+main2/
 pgdata/
-main/
-setting.py
+venv/
 docker-compose.yml
