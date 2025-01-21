@@ -1,74 +1,106 @@
-
-Заготовка под написани торгового бота
-
-Для запуска:
-    
-Установить библиотеки:
-    pip install -r requirements.txt 
-
-Создать файлы из .gitignore:
-    main\setting.py
-        NAME_SYMBOL = ['BTCUSDT', 'ETHUSDT'] - писать свои, от 1 до сколько хотите
-
-        POSTGRES_HOST = 'localhost'
-        POSTGRES_USER = 'user'
-        POSTGRES_DB = 'database'
-        POSTGRES_PASSWORD = 'password'
-        POSTGRES_PORT = '5433'
-
-Docker для запуска контейнера БД (Пока не нужен)
-Пример docker-compose.yml:
-    version: "3.9"
-    services:
-        postgres:
-            container_name: "my_db"
-            restart: always
-            image: postgres:16.3
-            environment:
-            POSTGRES_DB: "database"
-            POSTGRES_USER: "user"
-            POSTGRES_PASSWORD: "password"
-            volumes:
-            - .\pgdata:/var/lib/postgresql/data
-            - .\init-scripts:/docker-entrypoint-initdb.d
-            ports:
-            - "5433:5432"
-Docker команды:
-    docker-compose -f docker-compose.yml up --force-recreate - запустить контейнер и создать таблицы БД
-    docker-compose dawn -v - остановить и удалить контейнер
-    docker ps - для проверки
-
-Расширения
-cweijan.vscode-mysql-client2 - для подключение к БД
-
-Полезная информация:
-
-Binance
-
-Git - https://github.com/binance/binance-connector-python
-API documentation - https://binance-docs.github.io/apidocs/spot/en/#websocket-market-streams
-Форум разработчиков - https://dev.binance.vision/search?q=Quote%20asset%20volume
-
-The following base endpoints are available:
-    https://api.binance.com
-    https://api-gcp.binance.com
-    https://api1.binance.com
-    https://api2.binance.com
-    https://api3.binance.com
-    https://api4.binance.com
+# Fisher
+Программное обеспечение для работы с извесными криптобиржами. Создание гибких торговых стратегий, с возможностью добавлять функционал. Создание системы оповещений, как о работе стратегий, так и оповещений для удобства ручной торговли.
+Приложение локально, что гарантирует безопасность. <!-- описание репозитория -->
 
 
+<!--Установка-->
+## Установка (Linux)
+У вас должны быть установлены [зависимости проекта](https://github.com/StemPank/fisher#Зависимости)
 
-Bybit
+1. Клонирование репозитория 
 
-Git - https://github.com/bybit-exchange/pybit
-API documentation - https://bybit-exchange.github.io/docs/v5/intro
+```git clone https://github.com/OkulusDev/Oxygen.git```
 
-Address Segment	Description
-    v5/market/	Candlestick, orderbook, ticker, platform transaction data, underlying financial rules, risk control rules
-    v5/order/	Order management
-    v5/position/	Position management
-    v5/account/	Single account operations only – unified funding account, rates, etc.
-    v5/asset/	Operations across multiple accounts – asset management, fund management, etc.
-    v5/spot-lever-token/	Obtain quotes from Leveraged Tokens on Spot, and to exercise purchase and redeem functions
-    v5/spot-margin-trade/	Manage Margin Trading on Spot
+2. Переход в директорию Oxygen
+
+```cd fisher```
+
+3. Создание виртуального окружения
+
+```py -m venv venv```
+
+4. Активация виртуального окружения
+
+```.\venv\Scripts\activate```
+
+5. Установка зависимостей
+
+```py -m pip install -r requirements.txt```
+<!-- py -m pip freeze > requirements.txt -->
+
+6. Запуск скрипта для демонстрации возможностей Oxygen
+
+```py main/main.py```
+
+
+<!--Пользовательская документация-->
+## Документация
+Пользовательскую документацию можно получить по [этой ссылке](./docs/ru/documentation.md).
+
+<!--зависимости-->
+## Зависимости
+Эта программа зависит от интепретатора Python версии 3.12.2 или выше, PIP 24.3.1 или выше. 
+<!-- Если вы заметили, что он данное ПО можно запустить на версии ниже, или он не работает на какой-либо версии, то напишите в [поддержку](https://github.com/OkulusDev/Oxygen#поддержка) -->
+
+
+<!--описание коммитов-->
+## Описание коммитов
+# Oxygen
+Программное обеспечение для инженерных вычислений, научно-естественных наук, математики и алгоритмов <!-- описание репозитория -->
+<!--Блок информации о репозитории в бейджах-->
+![Static Badge](https://img.shields.io/badge/OkulusDev-Oxygen-Oxygen)
+![GitHub top language](https://img.shields.io/github/languages/top/OkulusDev/Oxygen)
+![GitHub](https://img.shields.io/github/license/OkulusDev/Oxygen)
+![GitHub Repo stars](https://img.shields.io/github/stars/OkulusDev/Oxygen)
+![GitHub issues](https://img.shields.io/github/issues/OkulusDev/Oxygen)
+
+![Logotype](./docs/wall.jpg)
+
+<!--Установка-->
+## Установка (Linux)
+У вас должны быть установлены [зависимости проекта](https://github.com/OkulusDev/Oxygen#зависимости)
+
+1. Клонирование репозитория 
+
+```git clone https://github.com/OkulusDev/Oxygen.git```
+
+2. Переход в директорию Oxygen
+
+```cd Oxygen```
+
+3. Создание виртуального окружения
+
+```python3 -m venv venv```
+
+4. Активация виртуального окружения
+
+```source venv/bin/activate```
+
+5. Установка зависимостей
+
+```pip3 install -r requirements.txt```
+
+6. Запуск скрипта для демонстрации возможностей Oxygen
+
+```python3 oxygen.py --help```
+
+<!--Пользовательская документация-->
+## Документация
+Пользовательскую документацию можно получить по [этой ссылке](./docs/ru/index.md).
+
+[Релизы программы]: https://github.com/OkulusDev/Oxygen/releases
+
+<!--Поддержка-->
+## Поддержка
+Если у вас возникли сложности или вопросы по использованию пакета, создайте 
+[обсуждение](https://github.com/OkulusDev/Oxygen/issues/new/choose) в данном репозитории или напишите на электронную почту <bro.alexeev@inbox.com>.
+
+<!--зависимости-->
+## Зависимости
+Эта программа зависит от интепретатора Python версии 3.7 или выше, PIP 23.2.1 или выше. Если вы заметили, что он данное ПО можно запустить на версии ниже, или он не работает на какой-либо версии, то напишите в [поддержку](https://github.com/OkulusDev/Oxygen#поддержка)
+
+<!--описание коммитов-->
+## Описание коммитов
+| Название | Описание                                                             |
+|----------|----------------------------------------------------------------------|
+| 1-nd gui | Сборка проекта. Основное окно, вкладка агентов и глобальных настроек. Основное окно, при запуске создается дефалтный файл настроек. Влкадка агентов открывается из выподающего меню инструментов, есть возможность создавать, запускать, останавливать, настраивать и удалять новых агентов, открывать вкладку агентов двойным нажатием. При создании агента в каталоге из глобальных настрое, создаются файлы python и дефолтный файл настроек агента, его можно редактировать с кнопки настроек агента. Реализовано созранение открытых вкладок и созданых агентов, а также размер и расположение окна при перезапуске программы. Если во время папка с агента исчезает, агент становится не активным, и остается доступ только удаления агента|

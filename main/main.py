@@ -1,55 +1,24 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QMenuBar, QMenu, QAction, QTabWidget
-from agent_tab import AgentTab
+from PyQt5.QtWidgets import QApplication
+from gui.main_window import MainWindow
+from utils.logging import setup_logging
 
-class MainWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Программа на PyQt5")
-        self.setGeometry(100, 100, 800, 600)
+def main():
+    """
+        Точка входа
+    """
+    # Настройка логирования
+    setup_logging()
 
-        self.init_ui()
+    # Создание экземпляра приложения
+    app = QApplication(sys.argv)
 
-    def init_ui(self):
-        # Меню бар
-        menu_bar = QMenuBar()
-        self.setMenuBar(menu_bar)
+    # Инициализация главного окна
+    main_window = MainWindow()
+    main_window.show()
 
-        # Меню "Инструменты"
-        tools_menu = QMenu("Инструменты", self)
-        menu_bar.addMenu(tools_menu)
-
-        self.agent_action = QAction("Агент", self, checkable=True)
-        self.agent_action.toggled.connect(self.toggle_agent_tab)
-        tools_menu.addAction(self.agent_action)
-
-        # Меню "Действия"
-        actions_menu = QMenu("Действия", self)
-        menu_bar.addMenu(actions_menu)
-
-        # Центральный виджет
-        self.tabs = QTabWidget()
-        self.setCentralWidget(self.tabs)
-
-    def toggle_agent_tab(self, checked):
-        if checked:
-            self.add_agent_tab()
-        else:
-            self.remove_agent_tab()
-
-    def add_agent_tab(self):
-        if not hasattr(self, "agent_tab"):
-            self.agent_tab = AgentTab(self)
-            self.tabs.addTab(self.agent_tab, "Агент")
-
-    def remove_agent_tab(self):
-        index = self.tabs.indexOf(self.agent_tab)
-        if index != -1:
-            self.tabs.removeTab(index)
-            del self.agent_tab
+    # Запуск основного цикла приложения
+    sys.exit(app.exec_())
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = MainWindow()
-    window.show()
-    sys.exit(app.exec_())
+    main()
