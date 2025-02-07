@@ -1,26 +1,36 @@
 import os, pickle, datetime
-from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, 
+from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QComboBox,
                              QLineEdit, QLabel, QDialogButtonBox, 
                              QDateEdit, QCheckBox
                              )
 from PyQt5.QtCore import QDate
-import gui.global_variable as global_variable
+
+import paths, global_variable, gui.texts as texts
 
 class AgentDialog(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Добавить агента")
-        self.setFixedSize(300, 100)
+    def __init__(self, parent=None, language=None):
+        super().__init__(parent)  # Теперь parent передается в QDialog
+        self.language = language
+        self.exchanges = global_variable.registered_data_providers()
+        
+        self.setWindowTitle(texts.DIALOG_AGENTS_ADD[self.language])
+        self.setFixedSize(300, 150)
 
         layout = QVBoxLayout()
 
-        # Поле ввода текста
-        self.name_input = QLineEdit() # Выджет редактируемой строки
-        self.name_input.setPlaceholderText("Имя агента")
-        # layout.addWidget(QLabel("Введите имя агента:"))
-        layout.addWidget(self.name_input) # Добавить на макет
+        # Поле ввода имени агента
+        self.name_input = QLineEdit()
+        self.name_input.setPlaceholderText(texts.DIALOG_AGENTS_ADD_FORM[self.language][1])
+        layout.addWidget(QLabel(texts.DIALOG_AGENTS_ADD_FORM[self.language][0]))
+        layout.addWidget(self.name_input)
 
-        # Кнопки диалогового окна
+        # Выпадающий список бирж
+        self.exchange_select = QComboBox()
+        self.exchange_select.addItems(self.exchanges)
+        layout.addWidget(QLabel(texts.DIALOG_AGENTS_ADD_FORM[self.language][2]))
+        layout.addWidget(self.exchange_select)
+
+        # Кнопки OK / Cancel
         button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         button_box.accepted.connect(self.accept)
         button_box.rejected.connect(self.reject)
@@ -28,41 +38,44 @@ class AgentDialog(QDialog):
 
         self.setLayout(layout)
 
-    def get_name(self):
-        return self.name_input.text()
+    def get_data(self):
+        """Возвращает имя агента и выбранную биржу."""
+        return self.name_input.text(), self.exchange_select.currentText()
+
 
 class SettingsDialog(QDialog):
-    def __init__(self, agent_name=None, parent=None):
+    def __init__(self, parent=None, agent_name=None, language=None):
         super().__init__(parent)
 
         self.agent_name = agent_name
-        setting = global_variable.setting_file()
-        if setting.get("folder_path"):
-            self.agent_path = setting.get("folder_path")
-        # self.agent_path = global_variable.setting_file()
+        self.language = language
+        self.exchanges = global_variable.registered_data_providers()
+        self.agent_path = global_variable.AGENTS_FOLDER
 
-        self.setWindowTitle(f"Настройки агента: {agent_name}")
+        self.setWindowTitle(f"{texts.DIALOG_AGENTS_SETTING[self.language]}: {agent_name}")
         self.setFixedSize(400, 200)
 
         layout = QVBoxLayout()
-        layout.addWidget(QLabel(f"Настройки для агента: {agent_name}"))
+        
+        # Выпадающий список бирж
+        self.exchange_select = QComboBox()
+        self.exchange_select.addItems(self.exchanges)
+        layout.addWidget(QLabel(texts.DIALOG_AGENTS_ADD_FORM[self.language][2]))
+        layout.addWidget(self.exchange_select)
 
         # Поля выбора даты
-        date_layout = QHBoxLayout()
-
+        layout.addWidget(QLabel("Дата начала:"))
         self.start_date_edit = QDateEdit()
         self.start_date_edit.setCalendarPopup(True)  # Всплывающий календарь
         self.start_date_edit.setDisplayFormat("yyyy-MM-dd")
-        date_layout.addWidget(QLabel("Дата начала:"))
-        date_layout.addWidget(self.start_date_edit)
-
+        layout.addWidget(self.start_date_edit)
+        
+        # Поля выбора даты
+        layout.addWidget(QLabel("Дата конца:"))
         self.end_date_edit = QDateEdit()
         self.end_date_edit.setCalendarPopup(True)
         self.end_date_edit.setDisplayFormat("yyyy-MM-dd")
-        date_layout.addWidget(QLabel("Дата конца:"))
-        date_layout.addWidget(self.end_date_edit)
-
-        layout.addLayout(date_layout)
+        layout.addWidget(self.end_date_edit)
 
         # Галочка "До текущей даты"
         self.current_date_checkbox = QCheckBox("До текущей даты")
@@ -91,12 +104,13 @@ class SettingsDialog(QDialog):
     def save_settings(self):
         """Сохраняет выбранные даты и состояние галочки в файл."""
         settings = {
-            "start_date": self.start_date_edit.date().toString("yyyy-MM-dd"),
-            "end_date": self.end_date_edit.date().toString("yyyy-MM-dd"),
+            "exchange": self.exchange_select.currentText(),
+            "start_date": self.start_date_edit.date().toPyDate(),
+            "end_date": self.end_date_edit.date().toPyDate(),
             "current_date_enabled": self.current_date_checkbox.isChecked(),
         }
 
-        # Уникальный файл для каждого агента
+        
         filename = f"{self.agent_path}/{self.agent_name}/{self.agent_name}_settings.pkl"
 
         with open(filename, "wb") as file:
@@ -111,6 +125,11 @@ class SettingsDialog(QDialog):
         if os.path.exists(filename):
             with open(filename, "rb") as file:
                 settings = pickle.load(file)
+
+            # Выбираем биржу в выпадающем списке
+            exchange = settings.get("exchange")
+            if exchange and exchange in self.exchanges:
+                self.exchange_select.setCurrentText(exchange)
 
             # Установка сохранённых значений
             start_date_value = settings.get("start_date")

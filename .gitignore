@@ -1,13 +1,12 @@
 __pycache__
 agents/
 init-script/
-
-main/gui/operative_state.pkl
-main/gui/state.pkl
-main/gui/setting/setting.pkl
-main/utils/app.log
+main/gui/state/.env
+main/gui/state/operative_state.pkl
+main/gui/state/output_state.pkl
+main/gui/state/setting.pkl
+main/utils/
 
 main2/
 pgdata/
 venv/
-docker-compose.yml

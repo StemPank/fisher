@@ -2,47 +2,58 @@ import sys, os, pickle
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QMenuBar, QMenu, QAction, 
                             QTabWidget, QWidget, QVBoxLayout, QPushButton)
 from PyQt5.QtGui import QIcon
+
+import paths, global_variable, gui.texts as texts
+
 from gui.agent.agent_tab import AgentTab
-from gui.setting.setting_tab import SettingTab
 from gui.agent.agent_specific_tab import AgentSpecificTab
-from gui.defot_file import create_defolt_file_setting
-import gui.global_variable as global_variable
-import gui.texts as texts
+from gui.setting.provider_tab import ProviderTab
+from gui.setting.setting_tab import SettingTab
+
+from core.agent.agent_manager import AgentManager
 
 class MainWindow(QMainWindow):
     def __init__(self):
+        """
+            Определяет глобальные элементы, вызывает создание интерфейса
+        """
         #вызывает метод init() родительского класса с аргументами и ключевыми аргументами, переданными конструктору дочернего класса
         super().__init__() 
-        """
-            setWindowTitle и setGeometry: Установка заголовка и размеров окна.
-            init_ui: Создание интерфейса.
-            load_state: Загрузка состояния.
-        """
-        # создание дефолтного файла настроек приложения
-        create_defolt_file_setting() 
         
+        # setWindowTitle и setGeometry: Установка заголовка и размеров окна
         self.setWindowTitle("Fisher")
         self.setGeometry(100, 100, 800, 600)
 
-        self.init_ui()
-        self.load_state()
-        
+        self.language = global_variable.LANGUAGE
 
+        self.init_ui() # init_ui: Создание интерфейса
+        self.load_state() # load_state: Загрузка состояния
+        
     # Создание основных элементов:
     def init_ui(self):
+        """
+            Создает интерфейс
+        """
         # Меню бар
         menu_bar = QMenuBar() # определяем виджет
         self.setMenuBar(menu_bar)
 
         # Меню "Инструменты"
-        tools_menu = QMenu(texts.MENU_TOOLS[global_variable.language_check()], self)
+        tools_menu = QMenu(texts.MENU_TOOLS[self.language], self)
         menu_bar.addMenu(tools_menu)
 
-        self.agent_action = QAction(texts.MENU_AGENTS[global_variable.language_check()], self, checkable=True)
+        # Вкладка Агенты
+        self.agent_action = QAction(texts.MENU_AGENTS[self.language], self, checkable=True)
         self.agent_action.toggled.connect(self.all_tab) # нужно проверить нажатие в вызываемом методе
         tools_menu.addAction(self.agent_action)
 
-        self.setting_action = QAction(texts.MENU_SETTINGS[global_variable.language_check()], self, checkable=True)
+        # Вкладка Поставщики данных
+        self.provider_action = QAction(texts.MENU_PROVIDERS[self.language], self, checkable=True)
+        self.provider_action.toggled.connect(self.all_tab)
+        tools_menu.addAction(self.provider_action)
+
+        # Вкладка Настройки
+        self.setting_action = QAction(texts.MENU_SETTINGS[self.language], self, checkable=True)
         self.setting_action.toggled.connect(self.all_tab)
         tools_menu.addAction(self.setting_action)
 
@@ -56,9 +67,13 @@ class MainWindow(QMainWindow):
         self.tabs.tabCloseRequested.connect(self.close_tab) # Подключить сигнал tabCloseRequested к close_tab
         self.setCentralWidget(self.tabs)
 
+        self.agent_manager = AgentManager()
+
     def all_tab(self, checked):
         """
         Создать или удалить вкладки меню
+
+        :checked - информация о кнопки из меню, активна или нет
         """
         action = self.sender() # Получаем действие, вызвавшее событие
         if checked:
@@ -70,7 +85,7 @@ class MainWindow(QMainWindow):
         """
         Создать вкладку 
 
-        :param tab_name: str имя кнопки меню
+        :tab_name - (str) имя кнопки меню
         """
         # Проверяем, существует ли уже вкладка с таким именем
         for i in range(self.tabs.count()):
@@ -78,33 +93,35 @@ class MainWindow(QMainWindow):
                 return  # Если вкладка есть, ничего не делаем
 
         # Создаём новую вкладку
-        if tab_name == texts.MENU_AGENTS[global_variable.language_check()]:
-            self.agent_tab = AgentTab(self)
+        if tab_name == texts.MENU_AGENTS[self.language]:
+            self.agent_tab = AgentTab(self, self.language, self.agent_manager)
 
             # Загружаем состояние только если вкладка открывается впервые
-            # if not hasattr(self, "agent_tab_loaded"):
-            #     self.agent_tab_loaded = True
-                # Если файл состояния существует, загружаем состояние
-            if os.path.exists(global_variable.OPERATIVE_STATE_FILE):
-                with open(global_variable.OPERATIVE_STATE_FILE, "rb") as file:
+            if os.path.exists(paths.OPERATIVE_STATE_FILE):
+                with open(paths.OPERATIVE_STATE_FILE, "rb") as file:
                     state = pickle.load(file)
                     self.agent_tab.load_state(state)
 
             self.tabs.addTab(self.agent_tab, tab_name)
 
-        elif tab_name == texts.MENU_SETTINGS[global_variable.language_check()]:
-            self.setting_tabs = SettingTab(self)
+        elif tab_name == texts.MENU_PROVIDERS[self.language]:
+            self.provider_tab = ProviderTab(self, self.language)
+            self.tabs.addTab(self.provider_tab, tab_name)
+
+        elif tab_name == texts.MENU_SETTINGS[self.language]:
+            self.setting_tabs = SettingTab(self, self.language)
             self.tabs.addTab(self.setting_tabs, tab_name)
+        
         else:
             # Для динамических вкладок
-            new_tab = AgentSpecificTab(self, tab_name)
+            new_tab = AgentSpecificTab(self, self.agent_manager, tab_name, self.language)
             self.tabs.addTab(new_tab, tab_name)
 
     def remove_tab(self, tab_name):
         """
         Удалить вкладку 
 
-        :param tab_name: str имя кнопки меню
+        :tab_name - (str) имя кнопки меню
         """
         # Находим вкладку с указанным именем и удаляем её
         for i in range(self.tabs.count()):
@@ -117,19 +134,25 @@ class MainWindow(QMainWindow):
             Закрывает вкладку. Если вкладка создана из меню, снимается галочка.
             Сохраняет состояние вкладки агентов перед закрытием.
 
-            :param index: int индекс вкладки
+            :index - (int) индекс вкладки
         """
         widget = self.tabs.widget(index)
         try:
             if widget == self.agent_tab:
                 self.agent_action.setChecked(False)
+                
                 # Сохраняем состояние вкладки агентов в файл
                 state = self.agent_tab.save_state()
-                with open(global_variable.OPERATIVE_STATE_FILE, "wb") as file:
+                with open(paths.OPERATIVE_STATE_FILE, "wb") as file:
                     pickle.dump(state, file)
 
                 self.agent_tab.deleteLater()  # Удаляем виджет из памяти
                 del self.agent_tab  # Удаляем ссылку
+                return
+        except: pass
+        try:
+            if widget == self.provider_tab:
+                self.provider_action.setChecked(False)
                 return
         except: pass
         try:
@@ -144,10 +167,10 @@ class MainWindow(QMainWindow):
         """
             Открывает новую вкладку с агентом.
         
-            :param agent_name: str имя агента
+            :agent_name - (str) имя агента
         """
         # Создаем новую вкладку
-        self.agent_specific_tab = AgentSpecificTab(self, agent_name)
+        self.agent_specific_tab = AgentSpecificTab(self, self.agent_manager, agent_name, self.language)
         # Добавляем вкладку в QTabWidget главного окна
         self.tabs.addTab(self.agent_specific_tab, agent_name)
         self.tabs.setCurrentWidget(self.agent_specific_tab)
@@ -177,7 +200,7 @@ class MainWindow(QMainWindow):
             "window_state": self.saveState()         # Сохраняем состояние окна (например, меню)
         }
         
-        with open(global_variable.STATE_FILE, "wb") as file:
+        with open(paths.STATE_FILE, "wb") as file:
             pickle.dump(state, file)
 
     def load_state(self):
@@ -185,8 +208,8 @@ class MainWindow(QMainWindow):
             Загрузка состояния
         """
         # Проверяем, существует ли файл состояния
-        if os.path.exists(global_variable.STATE_FILE):
-            with open(global_variable.STATE_FILE, "rb") as file:
+        if os.path.exists(paths.STATE_FILE):
+            with open(paths.STATE_FILE, "rb") as file:
                 state = pickle.load(file)
 
             # Восстанавливаем размеры и положение окна
@@ -201,23 +224,27 @@ class MainWindow(QMainWindow):
                 self.add_tab(tab_name)
 
             # Если вкладка "Агенты" была открыта, загружаем её состояние
-            if texts.MENU_AGENTS[global_variable.language_check()] in open_tabs:
+            if texts.MENU_AGENTS[self.language] in open_tabs:
                 self.agent_tab.load_state(state.get("agent_tab_state", {}))
                 
-                
-                # if tab_name == texts.MENU_AGENTS[global_variable.language_check()]:
-                #     self.agent_action.setChecked(True)
-                #     if "agent_tab_state" in state and hasattr(self, "agent_tab"):
-                #         self.agent_tab.load_state(state["agent_tab_state"])  # Восстанавливаем состояние AgentTab
-                # elif tab_name == texts.MENU_SETTINGS[global_variable.language_check()]:
-                #     self.setting_action.setChecked(True)
-                # else:
-                #     self.add_tab(tab_name)
+                if tab_name == texts.MENU_AGENTS[self.language]:
+                    self.agent_action.setChecked(True)
+                    if "agent_tab_state" in state and hasattr(self, "agent_tab"):
+                        self.agent_tab.load_state(state["agent_tab_state"])  # Восстанавливаем состояние AgentTab
+
+                elif tab_name == texts.MENU_PROVIDERS[self.language]:
+                    self.provider_action.setChecked(True)
+
+                elif tab_name == texts.MENU_SETTINGS[self.language]:
+                    self.setting_action.setChecked(True)
+
+                else:
+                    self.add_tab(tab_name)
 
             # Загружаем дополнительные вкладки, если есть
-            # for tab_name in open_tabs:
-            #     if tab_name not in (texts.MENU_AGENTS[global_variable.language_check()], texts.MENU_SETTINGS[global_variable.language_check()]):
-            #         self.add_tab(tab_name)
+            for tab_name in open_tabs:
+                if tab_name not in (texts.MENU_AGENTS[self.language], texts.MENU_SETTINGS[self.language]):
+                    self.add_tab(tab_name)
 
     def closeEvent(self, event):
         """

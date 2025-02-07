@@ -1,14 +1,14 @@
 import sys
 from PyQt5.QtWidgets import QApplication
 from gui.main_window import MainWindow
-from utils.logging import setup_logging
+from core.agent.defot_file import create_defolt_file_setting
 
 def main():
     """
         Точка входа
     """
-    # Настройка логирования
-    setup_logging()
+    # создание дефолтного файла настроек приложения
+    create_defolt_file_setting() 
 
     # Создание экземпляра приложения
     app = QApplication(sys.argv)
