@@ -1,7 +1,7 @@
 import sys
 from PyQt5.QtWidgets import QApplication
 from gui.main_window import MainWindow
-from core.agent.defot_file import create_defolt_file_setting
+from core.gui.defot_file import create_defolt_file_setting
 
 def main():
     """

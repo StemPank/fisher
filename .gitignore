@@ -4,7 +4,6 @@ init-script/
 main/gui/state/.env
 main/gui/state/operative_state.pkl
 main/gui/state/output_state.pkl
-main/gui/state/setting.pkl
 main/utils/
 
 main2/

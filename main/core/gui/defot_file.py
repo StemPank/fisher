@@ -2,7 +2,7 @@ import os, pickle
 import shutil
 
 import paths, global_variable, gui.texts as texts
-import core.table_for_agent as table_for_agent
+import core.gui.table_for_agent as table_for_agent
 
 """
     Файл отвечает за создание и удаление файлов

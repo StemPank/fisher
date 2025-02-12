@@ -22,6 +22,11 @@ class AgentManager:
             module_name = f"run_{name}"
             module_dir = os.path.join(global_variable.AGENTS_FOLDER, name)
             sys.path.append(module_dir)
+
+            # Удаляем модуль из кэша перед импортом (перезагрузка), Это заставляет Python заново загрузить код при новом запуске.
+            if module_name in sys.modules:
+                del sys.modules[module_name]
+
             module = importlib.import_module(module_name)
 
             # Создаем очередь и запускаем процесс

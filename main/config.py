@@ -9,5 +9,7 @@ LIST_OF_AVAILABLE_BASE_ENDPOINTS = {
                 "https://api2.binance.com", 
                 "https://api3.binance.com", 
                 "https://api4.binance.com"],
-    "bybit": []
+    "bybit": ["https://api-testnet.bybit.com",
+              "https://api.bybit.com",
+              "https://api.bytick.com"]
 }

@@ -10,7 +10,7 @@ from gui.agent.agent_specific_tab import AgentSpecificTab
 from gui.setting.provider_tab import ProviderTab
 from gui.setting.setting_tab import SettingTab
 
-from core.agent.agent_manager import AgentManager
+from core.gui.agent_manager import AgentManager
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -24,7 +24,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Fisher")
         self.setGeometry(100, 100, 800, 600)
 
-        self.language = global_variable.LANGUAGE
+        self.language = global_variable.LANGUAGE or "russian"
 
         self.init_ui() # init_ui: Создание интерфейса
         self.load_state() # load_state: Загрузка состояния

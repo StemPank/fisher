@@ -9,6 +9,7 @@ def create(name):
 
         :name - имя агента
     """
+    # print(os.path.join(global_variable.AGENTS_FOLDER, name))
     # Создаем соединение с SQLite
     db_path = os.path.join(os.path.join(global_variable.AGENTS_FOLDER, name), f'agent_data_{name}.sqlite')
 
@@ -39,8 +40,8 @@ def create(name):
             market TEXT,
             name TEXT,
             time INTEGER,
-            buy FLOAT,
-            sale FLOAT,
+            side TEXT,
+            price FLOAT,
             identifier INTEGER
         );
     """)

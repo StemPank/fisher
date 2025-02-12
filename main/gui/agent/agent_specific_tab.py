@@ -8,9 +8,8 @@ from PyQt5.QtCore import QSize, QThread, pyqtSignal
 import pyqtgraph as pg
 
 import paths, global_variable, gui.texts as texts
-import gui.texts as texts
-from core.agent.agent_manager import AgentManager
-import core.table_for_agent as table_for_agent
+from core.gui.agent_manager import AgentManager
+import core.gui.table_for_agent as table_for_agent
 
 class GraphUpdater(QThread):
     """Поток обновления графика раз в минуту"""

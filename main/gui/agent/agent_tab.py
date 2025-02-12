@@ -8,7 +8,7 @@ from PyQt5.QtCore import QSize, Qt
 
 import paths, global_variable, gui.texts as texts
 import gui.agent.dialogs as dialogs
-import core.agent.defot_file as defot_file
+import core.gui.defot_file as defot_file
 
 class AgentTab(QWidget):
     def __init__(self, parent=None, language=None, agent_manager=None):

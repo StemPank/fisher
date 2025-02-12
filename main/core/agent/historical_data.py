@@ -2,7 +2,7 @@ import os, sys, importlib
 from datetime import datetime, date
 from core.binance.spot import klines
 from core.bybit.v5 import Market
-import core.table_for_agent as table_for_agent
+import core.agent.table_for_agent as table_for_agent
 
 
 def split_range(start, end, interval, limit=1000):
@@ -74,7 +74,8 @@ class HistoricalData():
         # Проверяем корректность
         if self.coin == None:
             print(f"В агенте {agent_name}, название монеты не задано")
-            return False
+            self.result = False
+            return 
         
         """
             hasattr(self, name): проверяет, есть ли у объекта метод с именем name.
@@ -85,7 +86,8 @@ class HistoricalData():
             #              Вызываем метор с именем ↓,   передаем аргументы ↓
             self.result = getattr(self, self.setting_data["exchange"])(agent_name, self.setting_data["start_date"], self.setting_data["end_date"], self.setting_data["current_date_enabled"]) 
         else:
-            print(f"Метод '{self.setting_data["exchange"]}' не найден.")
+            exchange = self.setting_data["exchange"]
+            print(f"Метод '{exchange}' не найден.")
             self.result = False
 
     def run(self):

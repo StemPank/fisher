@@ -1,9 +1,9 @@
 
 import global_variable
-from historical_data import HistoricalData
-import stream_kline
+from core.agent.historical_data import HistoricalData
+import core.agent.stream_kline as stream_kline
 
-import core.table_for_agent as table_for_agent
+import core.gui.table_for_agent as table_for_agent
 
 # _, exc, _, _=global_variable.registered_data_providers()
 

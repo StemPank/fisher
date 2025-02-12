@@ -2,7 +2,7 @@ import os, sys, importlib
 from binance.websocket.spot.websocket_stream import SpotWebsocketStreamClient
 from pybit.unified_trading import WebSocketTrading, WebSocket
 
-import core.table_for_agent as table_for_agent
+import core.agent.table_for_agent as table_for_agent
 
 class StreamKline():
     def __init__(self, agent_name, setting_data, key, coin=None, interval=None, queue=None):
@@ -56,7 +56,7 @@ class StreamKline():
             if dictionary["x"] == "true":
                 print(dictionary)
                 data = []
-                data.append(self.setting_data, self.coin, self.interval, int(dictionary["t"]), float(dictionary["o"]), float(dictionary["h"]), float(dictionary["l"]), float(dictionary["c"]), float(dictionary["v"]))
+                data.append((self.setting_data, self.coin, self.interval, int(dictionary["t"]), float(dictionary["o"]), float(dictionary["h"]), float(dictionary["l"]), float(dictionary["c"]), float(dictionary["v"])))
                 table_for_agent.insert_data(self.agent_name, data)
             
             self.queue.put(dictionary)
