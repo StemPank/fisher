@@ -5,6 +5,8 @@ from PyQt5.QtWidgets import (QFileDialog, QWidget, QVBoxLayout, QTableWidget,
 
 import paths, global_variable, gui.texts as texts, config
 
+from utils.logging import logger
+
 class SettingTab(QWidget):
     def __init__(self, parent=None, language=None):
         super().__init__(parent)
@@ -82,6 +84,9 @@ class SettingTab(QWidget):
         with open(paths.SETTING_FILE, "wb") as file:
             pickle.dump(state, file)
 
+        logger.debug(f"Настройки: \nlanguage: {language_code},\nfolder_path: {self.folder_path.text()}")
+        logger.info("Настройки сохранены")
+
     def setting_load(self):
         """Загрузка видимости выбранных настроек"""
         if os.path.exists(paths.SETTING_FILE):
@@ -89,6 +94,8 @@ class SettingTab(QWidget):
                 state = pickle.load(file)
                 self.language_text = state.get("language")
                 self.folder_path_text = state.get("folder_path")
+                
+                logger.debug(f"Загрузка данных: \nlanguage: {self.language_text},\nfolder_path: {self.folder_path_text}")
 
     @staticmethod
     def get_language_code(display_name):

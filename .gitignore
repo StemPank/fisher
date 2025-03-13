@@ -1,11 +1,13 @@
 __pycache__
 agents/
 init-script/
+main/core/agent/install/build
+main/core/agent/install/my_agents.egg-info
 main/gui/state/.env
 main/gui/state/operative_state.pkl
 main/gui/state/output_state.pkl
 main/gui/state/setting.pkl
-main/utils/
+main/utils/app.log
 
 main2/
 pgdata/

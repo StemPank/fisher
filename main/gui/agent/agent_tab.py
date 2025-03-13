@@ -1,14 +1,16 @@
 import os, pickle
 from PyQt5.QtWidgets import (QDialog, QWidget, QVBoxLayout, QTableWidget, 
                              QTableWidgetItem, QPushButton, QHBoxLayout, 
-                             QHeaderView)
+                             QHeaderView, QMessageBox)
 from PyQt5.QtGui import QIcon, QBrush
 from PyQt5.QtCore import QSize, Qt  
 
 
 import paths, global_variable, gui.texts as texts
 import gui.agent.dialogs as dialogs
-import core.agent.defot_file as defot_file
+import core.gui.defot_file as defot_file
+
+from utils.logging import logger
 
 class AgentTab(QWidget):
     def __init__(self, parent=None, language=None, agent_manager=None):
@@ -29,7 +31,7 @@ class AgentTab(QWidget):
         if language != None:
             self.language = language
         else:
-            self.language = global_variable.LANGUAGE
+            self.language = global_variable.setting_file("language")
         self.agent_manager = agent_manager
 
         self.layout = QVBoxLayout() 
@@ -51,6 +53,9 @@ class AgentTab(QWidget):
         add_agent_button = QPushButton()
         add_agent_button.setIcon(QIcon(os.path.join(paths.ICONS_PATH, "icon-plus.png")))
         add_agent_button.setIconSize(QSize(24, 24))
+        # Изменяем иконку при нажатии
+        add_agent_button.pressed.connect(lambda: add_agent_button.setIcon(QIcon(os.path.join(paths.ICONS_PATH, "icon-plus-pressed.png"))))
+        add_agent_button.released.connect(lambda: add_agent_button.setIcon(QIcon(os.path.join(paths.ICONS_PATH, "icon-plus.png"))))
         add_agent_button.clicked.connect(self.add_agent)
 
         button_layout = QHBoxLayout()
@@ -67,7 +72,7 @@ class AgentTab(QWidget):
             Открывает диалоговое окно AgentDialog для ввода имени.
             Добавляет строку с кнопками управления.
         """
-        # print(f"Передаю в AgentDialog: parent={self}, language={self.language}")
+        logger.debug(f"Вызов диалогового окна создание агента")
         dialog = dialogs.AgentDialog(parent=self, language=self.language)
         if dialog.exec() == QDialog.Accepted:
             """
@@ -82,20 +87,22 @@ class AgentTab(QWidget):
             """
             agent_name, exchange = dialog.get_data()
             if agent_name:
+                # Если имя агента уникально
                 if self.is_unique_item(self.agent_table, agent_name):
                     
-                    defot_file.New_file().create_new_file(agent_name, exchange) # Создать необходимые файлы для агента
+                    res = defot_file.New_file().create_new_file(agent_name, exchange) # Создать необходимые файлы для агента
                     
-                    self.row_position = self.agent_table.rowCount() # rowCount() возвращает количество строк в объекте
-                    self.agent_table.insertRow(self.row_position) # новая строка будет добавлена в таблицу на позицию self.row_position (индексация начинается с 0)
+                    if res:
+                        self.row_position = self.agent_table.rowCount() # rowCount() возвращает количество строк в объекте
+                        self.agent_table.insertRow(self.row_position) # новая строка будет добавлена в таблицу на позицию self.row_position (индексация начинается с 0)
 
-                    # Имя агента
-                    name_item = QTableWidgetItem(agent_name)
-                    name_item.setFlags(name_item.flags() & ~Qt.ItemIsEditable)  # Отключить редактирование
-                    self.agent_table.setItem(self.row_position, 0, name_item) # Устанавливаем данные в новую строку
+                        # Имя агента
+                        name_item = QTableWidgetItem(agent_name)
+                        name_item.setFlags(name_item.flags() & ~Qt.ItemIsEditable)  # Отключить редактирование
+                        self.agent_table.setItem(self.row_position, 0, name_item) # Устанавливаем данные в новую строку
 
-                    # Кнопки управления
-                    self.add_table_buttons(self.row_position, agent_name)
+                        # Кнопки управления
+                        self.add_table_buttons(self.row_position, agent_name)
 
     def is_unique_item(self, table_widget, text, column=0):
         """
@@ -109,15 +116,9 @@ class AgentTab(QWidget):
         for row in range(table_widget.rowCount()):
             item = table_widget.item(row, column)
             if item and item.text() == text:
-                print(texts.WARNING_OF_REPEAT_AGENT_NAME[self.language])
+                logger.info("Агент с атким именем уже существует")
+                QMessageBox.information(self, "Ошибка", "Агент с атким именем уже существует")
                 return False  # Найден дубликат
-        
-        # Проверяет есть ли папка с таким названием
-        # folder_path = os.path.join(global_variable.AGENTS_FOLDER, text)
-        # if os.path.exists(folder_path):
-        #     print(texts.WARNING_OF_REPEAT_AGENT_NAME[self.language])
-        #     return False
-
         return True  # Уникально
 
     def add_table_buttons(self, row, agent_name):
@@ -130,45 +131,87 @@ class AgentTab(QWidget):
         icon_size = QSize(24, 24)
 
         # Кнопка "Старт"
-        start_button = QPushButton()
-        start_button.setIcon(QIcon(os.path.join(paths.ICONS_PATH, "icon-play.png")))
-        start_button.setIconSize(icon_size)
-        start_button.clicked.connect(lambda: self.agent_manager.start_agent(agent_name))
-        self.agent_table.setCellWidget(row, 1, start_button)
+        self.start_button = QPushButton()
+        self.start_button.setIcon(QIcon(os.path.join(paths.ICONS_PATH, "icon-play.png")))
+        self.start_button.setIconSize(icon_size)
+        self.start_button.clicked.connect(lambda: self.start_agent(agent_name))
+        self.agent_table.setCellWidget(row, 1, self.start_button)
 
         # Кнопка "Стоп"
         stop_button = QPushButton()
         stop_button.setIcon(QIcon(os.path.join(paths.ICONS_PATH, "icon-stop.png")))
         stop_button.setIconSize(icon_size)
-        stop_button.clicked.connect(lambda: self.agent_manager.stop_agent(agent_name))
+        # Изменяем иконку при нажатии
+        stop_button.pressed.connect(lambda: stop_button.setIcon(QIcon(os.path.join(paths.ICONS_PATH, "icon-stop-pressed.png"))))
+        stop_button.released.connect(lambda: stop_button.setIcon(QIcon(os.path.join(paths.ICONS_PATH, "icon-stop.png"))))
+        stop_button.clicked.connect(lambda: self.stop_agent(agent_name))
         self.agent_table.setCellWidget(row, 2, stop_button)
 
         # Кнопка "Настройки"
         settings_button = QPushButton()
         settings_button.setIcon(QIcon(os.path.join(paths.ICONS_PATH, "icon-settings.png")))
         settings_button.setIconSize(icon_size)
+        # Изменяем иконку при нажатии
+        settings_button.pressed.connect(lambda: settings_button.setIcon(QIcon(os.path.join(paths.ICONS_PATH, "icon-settings-pressed.png"))))
+        settings_button.released.connect(lambda: settings_button.setIcon(QIcon(os.path.join(paths.ICONS_PATH, "icon-settings.png"))))
         settings_button.clicked.connect(lambda: self.open_settings(agent_name))
         self.agent_table.setCellWidget(row, 3, settings_button)
+        
 
         # Кнопка "Удалить"
         delete_button = QPushButton()
         delete_button.setIcon(QIcon(os.path.join(paths.ICONS_PATH, "icon-trash.png")))
         delete_button.setIconSize(icon_size)
+        # Изменяем иконку при нажатии
+        delete_button.pressed.connect(lambda: delete_button.setIcon(QIcon(os.path.join(paths.ICONS_PATH, "icon-trash-pressed.png"))))
+        delete_button.released.connect(lambda: delete_button.setIcon(QIcon(os.path.join(paths.ICONS_PATH, "icon-trash.png"))))
         delete_button.clicked.connect(lambda: self.remove_agent(row, agent_name))
         self.agent_table.setCellWidget(row, 4, delete_button)
 
-    def open_settings(self, agent_name):
+    
+    def start_agent(self, agent_name):
         """
-            Открытие диалогового окна настроек агента
+            Запускает агента.
 
             :agent_name (str) - имя агента
         """
+        logger.debug(f"Нажата кнопка запуска агента {agent_name}")
+        res = self.agent_manager.start_agent(agent_name)
+        if res:
+            self.start_button.setIcon(QIcon(os.path.join(paths.ICONS_PATH, "icon-play-pressed.png")))
+    
+    def stop_agent(self, agent_name):
+        """
+            Останавливает агента.
+
+            :agent_name (str) - имя агента
+        """
+        logger.debug(f"Нажата кнопка остановки агента {agent_name}")
+        res = self.agent_manager.stop_agent(agent_name)
+        if res:
+            self.start_button.setIcon(QIcon(os.path.join(paths.ICONS_PATH, "icon-play.png")))
+
+    def open_settings(self, agent_name):
+        """
+            Открытет диалоговое окно настроек агента
+
+            :agent_name (str) - имя агента
+        """
+        logger.debug(f"Нажата кнопка настроек агента {agent_name}")
         dialog = dialogs.SettingsDialog(self, agent_name, self.language)
+        logger.debug(f"Открыто окно настроек агента {agent_name}")
         dialog.exec()
     
     def remove_agent(self, row, agent_name):
+        """
+            Удаляет агента и его файлов
+
+            :agent_name (str) - имя агента
+        """
+        logger.debug(f"Нажата кнопка удаления агента {agent_name}")
         defot_file.New_file().del_file_agent(agent_name)
         self.agent_table.removeRow(row)
+        logger.debug(f"Агент удален {agent_name}")
 
     def on_double_click(self, row, column):
         """
@@ -179,7 +222,10 @@ class AgentTab(QWidget):
         """
         if column == 0:  # Открываем вкладку только при клике по имени агента
             agent_name = self.agent_table.item(row, column).text()
+            logger.debug(f"Было двойное нажатие по агенту {agent_name}")
             self.parent.open_agent_tab(agent_name)
+
+
 
     def save_state(self):
         """
@@ -193,7 +239,7 @@ class AgentTab(QWidget):
             agent_name = self.agent_table.item(row, 0).text()
 
             # Проверяем, существует ли соответствующая папка
-            folder_path = os.path.join(global_variable.AGENTS_FOLDER, agent_name)
+            folder_path = os.path.join(global_variable.setting_file("folder_path"), agent_name)
             folder_exists = os.path.isdir(folder_path) # логическое значение, указывающее, существует ли папка агента.
 
             # Сохраняем состояние агента в список
@@ -213,11 +259,12 @@ class AgentTab(QWidget):
 
         self.agent_table.setRowCount(0)
         agents = state.get("agents", [])
+        base_folder_path = global_variable.setting_file("folder_path")
 
         for agent in agents:
             # Проверяем, существует ли соответствующая папка
             agent_name = agent.get("name")
-            folder_path = os.path.join(global_variable.AGENTS_FOLDER, agent_name)
+            folder_path = os.path.join(base_folder_path, agent_name)
             folder_exists = os.path.isdir(folder_path) # логическое значение, указывающее, существует ли папка агента.
 
             # Добавляем строку в таблицу

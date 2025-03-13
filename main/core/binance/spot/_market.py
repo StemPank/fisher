@@ -1,6 +1,6 @@
 from binance.spot import Spot as Client
 
-def klines(symbol: str, interval: str, **kwargs):
+def klines(url: str, symbol: str, interval: str, **kwargs):
     """
     Arguments:
         symbol (str): торговая пара
@@ -11,4 +11,4 @@ def klines(symbol: str, interval: str, **kwargs):
         endTime (int, необязательно): временная метка в мс для получения агрегированных сделок до INCLUSIVE.
         timeZone (str, необязательно): по умолчанию: 0 (UTC)
     """
-    return Client(base_url="https://api1.binance.com").klines(symbol, interval, **kwargs)
+    return Client(base_url=url).klines(symbol, interval, **kwargs)

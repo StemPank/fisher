@@ -3,6 +3,13 @@
     Тексты программы
 """
 
+LOG_INFO_START = {
+    "russian": "Приложение запущено",
+    "english": "Application started"
+}
+
+
+
 MENU_TOOLS = {
     "russian": "Инструменты",
     "english": "Tools"
@@ -45,6 +52,11 @@ DIALOG_AGENTS_ADD_FORM = {
 DIALOG_AGENTS_SETTING = {
     "russian": "Настройки агента",
     "english": "Agent settings"
+}
+
+TAB_AGENTA = {
+    "russian": ["Редактор", "График", "Бэктест", "Результаты"],
+    "english": ["Editor", "Graph", "Backtest", "Results"]
 }
 
 # Для вкладки поставщика

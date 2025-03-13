@@ -5,12 +5,14 @@ from PyQt5.QtGui import QIcon
 
 import paths, global_variable, gui.texts as texts
 
+from utils.logging import logger
+
 from gui.agent.agent_tab import AgentTab
 from gui.agent.agent_specific_tab import AgentSpecificTab
 from gui.setting.provider_tab import ProviderTab
 from gui.setting.setting_tab import SettingTab
 
-from core.agent.agent_manager import AgentManager
+from core.gui.agent_manager import AgentManager
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -24,7 +26,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Fisher")
         self.setGeometry(100, 100, 800, 600)
 
-        self.language = global_variable.LANGUAGE
+        self.language = global_variable.setting_file("language") or "russian"
 
         self.init_ui() # init_ui: Создание интерфейса
         self.load_state() # load_state: Загрузка состояния
@@ -76,6 +78,7 @@ class MainWindow(QMainWindow):
         :checked - информация о кнопки из меню, активна или нет
         """
         action = self.sender() # Получаем действие, вызвавшее событие
+        logger.debug(f"Нажатие вкладки меню: {action.text()} {checked}")
         if checked:
             self.add_tab(action.text())
         else:
@@ -96,7 +99,7 @@ class MainWindow(QMainWindow):
         if tab_name == texts.MENU_AGENTS[self.language]:
             self.agent_tab = AgentTab(self, self.language, self.agent_manager)
 
-            # Загружаем состояние только если вкладка открывается впервые
+            # Загружаем состояние только если есть файл состояния
             if os.path.exists(paths.OPERATIVE_STATE_FILE):
                 with open(paths.OPERATIVE_STATE_FILE, "rb") as file:
                     state = pickle.load(file)
@@ -116,10 +119,13 @@ class MainWindow(QMainWindow):
             # Для динамических вкладок
             new_tab = AgentSpecificTab(self, self.agent_manager, tab_name, self.language)
             self.tabs.addTab(new_tab, tab_name)
+            
+        logger.debug(f"Открыта вкладка: {tab_name}")
 
     def remove_tab(self, tab_name):
         """
-        Удалить вкладку 
+        Если срабатывает из меню то галочка уберается атоматом и 
+        закрывается вкладка по индексу
 
         :tab_name - (str) имя кнопки меню
         """
@@ -127,6 +133,7 @@ class MainWindow(QMainWindow):
         for i in range(self.tabs.count()):
             if self.tabs.tabText(i) == tab_name:
                 self.tabs.removeTab(i)
+                logger.debug(f"Закрыта вкладка: {tab_name}")
                 break
 
     def close_tab(self, index):
@@ -137,31 +144,31 @@ class MainWindow(QMainWindow):
             :index - (int) индекс вкладки
         """
         widget = self.tabs.widget(index)
-        try:
-            if widget == self.agent_tab:
-                self.agent_action.setChecked(False)
-                
-                # Сохраняем состояние вкладки агентов в файл
-                state = self.agent_tab.save_state()
-                with open(paths.OPERATIVE_STATE_FILE, "wb") as file:
-                    pickle.dump(state, file)
+        # logger.debug(f"Закрытие вкладки: {widget}")
 
-                self.agent_tab.deleteLater()  # Удаляем виджет из памяти
-                del self.agent_tab  # Удаляем ссылку
-                return
-        except: pass
-        try:
-            if widget == self.provider_tab:
-                self.provider_action.setChecked(False)
-                return
-        except: pass
-        try:
-            if widget == self.setting_tabs:
-                self.setting_action.setChecked(False)
-                return
-        except: pass
+        # Проверяет наличие атрибута перед его использованием
+        if hasattr(self, "agent_tab") and widget == self.agent_tab:
+            self.agent_action.setChecked(False)
+            
+            # Сохраняем состояние вкладки агентов в файл
+            state = self.agent_tab.save_state()
+            with open(paths.OPERATIVE_STATE_FILE, "wb") as file:
+                pickle.dump(state, file)
+
+            self.agent_tab.deleteLater()  # Удаляем виджет из памяти
+            del self.agent_tab  # Удаляем ссылку
+            return
+        if hasattr(self, "provider_tab") and widget == self.provider_tab:
+            self.provider_action.setChecked(False)
+            return
+        if hasattr(self, "setting_tabs") and widget == self.setting_tabs:
+            self.setting_action.setChecked(False)
+            return
+        
+        # Передает для закрытия по индексу
         if widget:
             self.tabs.removeTab(index)
+            logger.debug(f"Закрыта вкладка: {self.tabs.tabText(index)}")
     
     def open_agent_tab(self, agent_name):
         """
@@ -174,6 +181,8 @@ class MainWindow(QMainWindow):
         # Добавляем вкладку в QTabWidget главного окна
         self.tabs.addTab(self.agent_specific_tab, agent_name)
         self.tabs.setCurrentWidget(self.agent_specific_tab)
+        
+        logger.debug(f"Открыта вкладка агента: {agent_name}")
     
     
     def save_state(self):
@@ -251,5 +260,6 @@ class MainWindow(QMainWindow):
             Действия при закрятии приложения
         """
         self.save_state()
+        logger.info("Приложение остановлено")
         AgentTab().save_state()
         super().closeEvent(event)
