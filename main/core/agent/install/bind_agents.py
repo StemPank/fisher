@@ -162,4 +162,140 @@ def clear_order_table(agent_name):
 
 
 
+class ContactAgent():
+    def __init__(self, agent_name, exchange, queue, backtest, optimization, variable_data):
+        """
+            Инициализация, связь с методами
 
+            Аргументы:
+                :agent_name - имя агента
+                :exchange - имя биржи
+                :queue - очедедь данных
+        """
+        self.setting_data = global_variable.setting_agent_file(agent_name) # Полечаем настройки агента по его имени
+        self.setting_data['exchange'] = exchange
+        self.agent_name = agent_name
+        self.queue = queue
+        self.backtest = backtest
+        self.optimization = optimization
+        self.variable_data = variable_data
+
+
+        self.table_for_agent = table_for_agent.TableForAgent(agent_name)
+    
+    def key_proviger(self):
+        """
+            Передает ключи для поставщика
+
+                :agent_name (str) - Имя агента
+                :return api_key, api_secret
+        """
+        _, _, self.api_key, self.api_secret=global_variable.registered_data_providers(key=self.setting_data['exchange'])
+        return self.api_key, self.api_secret
+
+
+    # Данные с поставщика
+    def historical_data(self, symbol, interval, backtest):
+        """
+        Запрашивает и записывает в БД исторические данные
+
+        Аргументы:
+            :symbol (str) - символ торговой пары
+            :interval (str) - Интервал
+            :backtest (bool) - Флаг бэктеста
+        """
+        try:
+            load_his = HistoricalData(self.agent_name, self.setting_data, symbol, interval, backtest, self.table_for_agent)
+            result = load_his.run()
+            return result
+        except Exception as e:
+            logger_agent.warning(f"Ошибка получения исторических данных агента {self.agent_name} к API: {e}")
+            return False
+    
+    def stream_kline_data(self, symbol, interval, queue):
+        """
+            Подключается к Вебсокету и передает данные в очередь, на закрытой свече добавляет данные к БД
+            
+            Аргументы:
+                :symbol (str) - Название валютной пары
+                :interval - Интервал
+                :queue (multiprocessing.Queue) - очередь мультипроцесса
+        """
+        try:
+            stream_kline.StreamKline(self.agent_name, self.setting_data["exchange"], self.setting_data["sub_option"], "start", self.table_for_agent, symbol, interval, queue)
+            return True
+        except Exception as e:
+            logger_agent.warning(f"Ошибка подключения к потоку данных данных агента {self.agent_name} к API: {e}")
+            return False
+
+    def stop_agent(self):
+        """Остановка Вебсокета"""
+        stream_kline.StreamKline(self.agent_name, self.setting_data["exchange"], self.setting_data["sub_option"], "stop", self.table_for_agent)
+    
+    def get_data(self):
+        """Получает список кортежей данных валютной пары из БД"""
+        return self.table_for_agent.get_data_main_table()
+
+    # Ордера
+    def new_order(self, symbol, commission, time, price, quantity, side, type, index_order, iteration_value, inform_bot=None , api_key=None, api_secret=None):
+        """
+        Открывает новую позицию
+
+        Аргументы:
+            :symbol (str) - символ торговой пары
+            :commission - комиссия
+            :time - временная метка
+            :price (int) - цена
+            :quantity (int) - количество
+            :side (str) - Направление
+            :type (str) - Тип
+            :index_order (int) - индекс сделки для параллельной торговли
+            :iteration_value - размер итерации
+            :inform_bot (bool) - Информирования в БОТ (необязательно)
+            :api_key - API ключ (пердопределен)
+            :api_secret - API секретный ключ (пердопределен)
+        """
+        api_key = api_key if api_key else self.api_key
+        api_secret = api_secret if api_secret else self.api_secret
+        logger_agent.debug(f"Запрос на публикацию нового ордера из агента {self.agent_name}")
+        data = []
+        # Информировать сообщением в боте, опционально даждаться подтверждения
+        if inform_bot:
+            inform = True
+        else:
+            inform = True
+
+        # Запрос на новый ордер, опционально получить подтверждение
+        if inform:
+            order = True
+        else:
+            order = False
+
+        # Записть в БД (index, time, price, side)
+        if inform and order:
+            data.append((index_order, time, price, quantity, side))
+            record = self.table_for_agent.insert_data_order(data)
+            if record:
+                logger_agent.debug(f"Нового ордер успешно опубликовон из агента {self.agent_name}")
+            else:
+                logger_agent.warning(f"Нового ордер успешно опубликовон, но запись не прошла из агента {self.agent_name}")
+                # Создаем файл для испрвдления мелкой ошибки
+                text = f"""
+                import core.agent.table_for_agent as table_for_agent
+                data[0] = {(index_order, time, price, quantity, side)}
+                record = table_for_agent.insert_data_order(data)
+                """
+                global_variable.record_warn("insert_data_order", text)
+                
+        else:
+            logger_agent.debug(f"Запрос на публикацию нового ордера отменен из агента {self.agent_name}")
+
+        # Расчет результатов
+        result_of_work.calculation_of_results(self.agent_name, iteration_value, commission, self.optimization, self.variable_data, self.table_for_agent)
+
+    def clear_order_table(self):
+        """Удалить данные о сделках (при новом запуске агента)"""
+        self.table_for_agent.clear_data_order_table()
+
+
+    

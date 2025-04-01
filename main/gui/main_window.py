@@ -11,6 +11,7 @@ from gui.agent.agent_tab import AgentTab
 from gui.agent.agent_specific_tab import AgentSpecificTab
 from gui.setting.provider_tab import ProviderTab
 from gui.setting.setting_tab import SettingTab
+from gui.bot.setting_bot_tab import SettingBotTab
 
 from core.gui.agent_manager import AgentManager
 
@@ -41,7 +42,7 @@ class MainWindow(QMainWindow):
         self.setMenuBar(menu_bar)
 
         # Меню "Инструменты"
-        tools_menu = QMenu(texts.MENU_TOOLS[self.language], self)
+        tools_menu = QMenu(texts.MENU_TOOLS[self.language][0], self)
         menu_bar.addMenu(tools_menu)
 
         # Вкладка Агенты
@@ -59,9 +60,14 @@ class MainWindow(QMainWindow):
         self.setting_action.toggled.connect(self.all_tab)
         tools_menu.addAction(self.setting_action)
 
-        # Меню "Действия"
-        # actions_menu = QMenu("Действия", self)
-        # menu_bar.addMenu(actions_menu)
+        # Меню "Доп. инструменты"
+        actions_menu = QMenu(texts.MENU_TOOLS[self.language][1], self)
+        menu_bar.addMenu(actions_menu)
+
+        # Вкладка Агенты
+        self.setting_bot_action = QAction(texts.MENU_SETTINGS_BOT[self.language], self, checkable=True)
+        self.setting_bot_action.toggled.connect(self.all_tab) # нужно проверить нажатие в вызываемом методе
+        actions_menu.addAction(self.setting_bot_action)
 
         # Центральный виджет
         self.tabs = QTabWidget()
@@ -114,6 +120,10 @@ class MainWindow(QMainWindow):
         elif tab_name == texts.MENU_SETTINGS[self.language]:
             self.setting_tabs = SettingTab(self, self.language)
             self.tabs.addTab(self.setting_tabs, tab_name)
+
+        elif tab_name == texts.MENU_SETTINGS_BOT[self.language]:
+            self.setting_bot_tabs = SettingBotTab(self, self.language)
+            self.tabs.addTab(self.setting_bot_tabs, tab_name)
         
         else:
             # Для динамических вкладок
@@ -163,6 +173,9 @@ class MainWindow(QMainWindow):
             return
         if hasattr(self, "setting_tabs") and widget == self.setting_tabs:
             self.setting_action.setChecked(False)
+            return
+        if hasattr(self, "setting_bot_tabs") and widget == self.setting_bot_tabs:
+            self.setting_bot_action.setChecked(False)
             return
         
         # Передает для закрытия по индексу

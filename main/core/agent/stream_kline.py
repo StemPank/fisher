@@ -2,19 +2,20 @@ import os, sys, importlib
 from binance.websocket.spot.websocket_stream import SpotWebsocketStreamClient
 from pybit.unified_trading import WebSocketTrading, WebSocket
 
-import core.agent.table_for_agent as table_for_agent
+# import core.agent.table_for_agent as table_for_agent
 
 from utils.logging import logger_agent
 
 class StreamKline():
-    def __init__(self, agent_name, setting_data, setting_data_sub, key, coin=None, interval=None, queue=None):
+    def __init__(self, agent_name, setting_data, setting_data_sub, key, table_for_agent, symbol=None, interval=None, queue=None):
         
         self.agent_name = agent_name
         self.setting_data = setting_data
-        self.coin = coin
+        self.symbol = symbol
         self.interval = interval
         self.queue = queue
         self.setting_data_sub = setting_data_sub
+        self.table_for_agent = table_for_agent
         
         """
             hasattr(self, name): проверяет, есть ли у объекта метод с именем name.
@@ -48,7 +49,7 @@ class StreamKline():
         
         if key == "start":
             logger_agent.info("Запускаем Websocket")
-            self.my_client.kline(symbol=self.coin, interval=self.interval)
+            self.my_client.kline(symbol=self.symbol, interval=self.interval)
         if key == "stop":
             logger_agent.info("Останавливаем Websocket")
             self.my_client.stop()
@@ -66,9 +67,9 @@ class StreamKline():
             if dictionary["x"] == "true":
                 logger_agent.debug("Сигнал WebSocket о закрытии свечи")
                 data = []
-                data.append((self.setting_data, self.coin, self.interval, int(dictionary["t"]), float(dictionary["o"]), float(dictionary["h"]), float(dictionary["l"]), float(dictionary["c"]), float(dictionary["v"])))
+                data.append((int(dictionary["t"]), float(dictionary["o"]), float(dictionary["h"]), float(dictionary["l"]), float(dictionary["c"]), float(dictionary["v"])))
                 logger_agent.debug(f"Cписок для записи в БД {data}")
-                table_for_agent.insert_data_stream(self.agent_name, data)
+                self.table_for_agent.insert_data_stream(data)
             
             self.queue.put(dictionary)
         
@@ -92,7 +93,7 @@ class StreamKline():
         
         if key == "start":
             logger_agent.info("Запускаем Websocket")
-            ws.kline_stream(interval=self.interval, symbol=self.coin, callback=self.message_handler_bybit)
+            ws.kline_stream(interval=self.interval, symbol=self.symbol, callback=self.message_handler_bybit)
         if key == "stop":
             logger_agent.info("Останавливаем Websocket")
             # ws.close()
@@ -107,10 +108,10 @@ class StreamKline():
                 logger_agent.debug("Сигнал WebSocket о закрытии свечи")
                 data = []
                 try:
-                    data.append((self.setting_data, self.coin, self.interval, int(dictionary["start"]), float(dictionary["open"]), float(dictionary["high"]), float(dictionary["low"]), float(dictionary["close"]), float(dictionary["volume"])))
+                    data.append((int(dictionary["start"]), float(dictionary["open"]), float(dictionary["high"]), float(dictionary["low"]), float(dictionary["close"]), float(dictionary["volume"])))
                 except Exception as e:
                     logger_agent.warning(f"Ошибка формирования списка WebSocket {e}")
                 logger_agent.debug(f"Cписок для записи в БД {data}")
-                table_for_agent.insert_data_stream(self.agent_name, data)
+                self.table_for_agent.insert_data_stream(data)
             
             self.queue.put(dictionary)

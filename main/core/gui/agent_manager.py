@@ -9,21 +9,24 @@ class AgentManager:
         self.agents = {}  # Хранит процессы агентов
         self.queues = {}  # Хранит очереди агентов
 
-    def start_agent(self, name):
+    def start_agent(self, name, exchange, symbol, intervall, commission, variable_data):
         """
             Запуск процессов агента со своими очередями данных
 
             :name - имя агента
         """
 
+        # if symbol or intervall or commission
+
         if name in self.agents and self.agents[name].is_alive():
             logger.info(f"Агент {name} уже запущен!")
             return False
 
         try:
+
             # Определяем путь к агенту и загружаем модуль
-            module_name = f"run_{name}"
-            module_dir = os.path.join(global_variable.setting_file("folder_path"), name) 
+            module_name = f"code_agent"
+            module_dir = os.path.join(paths.MAIN_REPOSITORY, f"core/{exchange}")
             sys.path.append(module_dir)
 
             # Удаляем модуль из кэша перед импортом (перезагрузка), Это заставляет Python заново загрузить код при новом запуске.
@@ -35,19 +38,19 @@ class AgentManager:
             # Создаем очередь и запускаем процесс
             queue = Queue()
             
-            process = Process(target=module.Agent().agent, args=(name, queue, paths.RUN_AGENT_PATH), daemon=True)
+            process = Process(target=module.Agent, args=(symbol, intervall, commission, variable_data, name, exchange, queue, paths.RUN_AGENT_PATH), daemon=True)
             process.start()
 
             self.agents[name] = process
             self.queues[name] = queue
 
-            logger.info(f"Агент {name} запущен.")
+            logger.info(f"Агент {name} запущен. {self.agents[name]}")
             return True
         except Exception as e:
             logger.warning(f"Ошибка запуска агента {name}: {e}")
             return False
 
-    def start_agent_backtest(self, name):
+    def start_agent_backtest(self, name, exchange, symbol, intervall, commission, variable_data):
         """
             Запуск процессов агента со своими очередями данных
 
@@ -60,8 +63,8 @@ class AgentManager:
 
         try:
             # Определяем путь к агенту и загружаем модуль
-            module_name = f"run_{name}"
-            module_dir = os.path.join(global_variable.setting_file("folder_path"), name) 
+            module_name = f"code_agent"
+            module_dir = os.path.join(paths.MAIN_REPOSITORY, f"core/{exchange}")
             sys.path.append(module_dir)
 
             # Удаляем модуль из кэша перед импортом (перезагрузка), Это заставляет Python заново загрузить код при новом запуске.
@@ -73,7 +76,7 @@ class AgentManager:
             # Создаем очередь и запускаем процесс
             queue = Queue()
             
-            process = Process(target=module.Agent().agent, args=(name, queue, paths.RUN_AGENT_PATH, True), daemon=True)
+            process = Process(target=module.Agent, args=(symbol, intervall, commission, variable_data, name, exchange, queue, paths.RUN_AGENT_PATH, False), daemon=True)
             process.start()
 
             self.agents[name] = process
@@ -120,7 +123,7 @@ class AgentManager:
             logger.warning(f"Ошибка остановки агента {name}: {e}")
             return False
 
-    def optimization_agent_backtest(self, name):
+    def optimization_agent_backtest(self, name, exchange, symbol, intervall, commission, variable_data):
         """
             Запуск процессов агента со своими очередями данных
 
@@ -133,8 +136,8 @@ class AgentManager:
 
         try:
             # Определяем путь к агенту и загружаем модуль
-            module_name = f"run_{name}"
-            module_dir = os.path.join(global_variable.setting_file("folder_path"), name) 
+            module_name = f"code_agent"
+            module_dir = os.path.join(paths.MAIN_REPOSITORY, f"core/{exchange}")
             sys.path.append(module_dir)
 
             # Удаляем модуль из кэша перед импортом (перезагрузка), Это заставляет Python заново загрузить код при новом запуске.
@@ -146,7 +149,7 @@ class AgentManager:
             # Создаем очередь и запускаем процесс
             queue = Queue()
             
-            process = Process(target=module.Agent, args=(True, name, queue, paths.RUN_AGENT_PATH), daemon=True)
+            process = Process(target=module.Agent, args=(symbol, intervall, commission, variable_data, name, exchange, queue, paths.RUN_AGENT_PATH, True), daemon=True)
             process.start()
 
             self.agents[name] = process
@@ -159,9 +162,3 @@ class AgentManager:
             return False
 
     
-    def get_queue(self, name):
-        return self.queues.get(name, None)
-
-    def stop_all(self):
-        for name in list(self.agents.keys()):
-            self.stop_agent(name)

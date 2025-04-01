@@ -11,8 +11,8 @@ LOG_INFO_START = {
 
 
 MENU_TOOLS = {
-    "russian": "Инструменты",
-    "english": "Tools"
+    "russian": ["Инструменты", "Доп. инструменты"],
+    "english": ["Tools", "Additional tools"]
 }
 
 MENU_AGENTS = {
@@ -55,8 +55,8 @@ DIALOG_AGENTS_SETTING = {
 }
 
 TAB_AGENTA = {
-    "russian": ["Редактор", "График", "Бэктест", "Результаты"],
-    "english": ["Editor", "Graph", "Backtest", "Results"]
+    "russian": ["Редактор", "График", "Бэктест", "Оптимизация", "Результаты"],
+    "english": ["Editor", "Graph", "Backtest", "Optimization", "Results"]
 }
 
 # Для вкладки поставщика
@@ -89,9 +89,22 @@ DIALOG_SETTING = {
     "english": "Select folder"
 }
 
+# Для вкладки редактора
+EDITOR_SETTING = {
+    "russian": ["Сохранить", "Загрузить", "Монетная пара:", "Интервал:", "Комиссия:"],
+    "english": ["Save", "Load", "Coin pair:", "Interval:", "Commission:"]
+}
+
 
 
 WARNING_OF_REPEAT_AGENT_NAME = {
     "russian": "Агент уже существует",
     "english": "The agent already exists"
+}
+
+
+# Для Меню "Доп. инструменты"
+MENU_SETTINGS_BOT = {
+    "russian": "Настройки бота",
+    "english": "Settings bot"
 }

@@ -1,44 +1,46 @@
 import os
 import global_variable
 import sqlite3
+import json
 
 from utils.logging import logger_agent
 
 def delete_unwanted_tables(name):
+        """
+            Удаление всех таблиц кроме основных 
+            (используют индикаторы, удаляя все таблицы индикаторов)
+            
+            Аргементы:
+                :name - имя агента
+        """
+        try:
+            logger_agent.debug(f"Запрос на удаление таблиц кроме основных.")
+            # Подключаемся к базе данных
+            db_path = os.path.join(os.path.join(global_variable.setting_file("folder_path"), name), f'agent_data_{name}.sqlite')
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
 
-    """
-        Удаление всех таблиц кроме основных 
+            # Получаем список всех таблиц
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+            tables = cursor.fetchall()
 
-        :name - имя агента
-    """
-    try:
-        logger_agent.debug(f"Запрос на удаление таблиц кроме основных.")
-        # Подключаемся к базе данных
-        db_path = os.path.join(os.path.join(global_variable.setting_file("folder_path"), name), f'agent_data_{name}.sqlite')
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
+            keep_tables = [f'{name}', 'variable', 'kline', 'trade', 'results', 'optimization']
+            # Итерируем по таблицам
+            for table in tables:
+                table_name = table[0]
+                if table_name not in keep_tables:
+                    # Если таблица не в списке исключений, удаляем ее
+                    cursor.execute(f"DROP TABLE IF EXISTS {table_name};")
+                    logger_agent.info(f"Таблица {table_name} удалена.")
 
-        # Получаем список всех таблиц
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-        tables = cursor.fetchall()
-
-        keep_tables = [f'{name}', f'trade{name}', 'results']
-        # Итерируем по таблицам
-        for table in tables:
-            table_name = table[0]
-            if table_name not in keep_tables:
-                # Если таблица не в списке исключений, удаляем ее
-                cursor.execute(f"DROP TABLE IF EXISTS {table_name};")
-                logger_agent.info(f"Таблица {table_name} удалена.")
-
-        # Сохраняем изменения и закрываем соединение
-        conn.commit()
-        conn.close()
-        return True
-    except Exception as e:
-        logger_agent.critical(f"Ошибка удаления таблиц БД (table_for_agent.py:7): {e}")
-        return False
-
+            # Сохраняем изменения и закрываем соединение
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as e:
+            logger_agent.critical(f"Ошибка удаления таблиц БД: {e}")
+            return False
+    
 # Основная таблица
 def insert_data(name, data):
     """
@@ -175,8 +177,8 @@ def insert_data_order(name, data):
     """
     Запись данных в таблицу ордеров
     """
+    logger_agent.debug(f"Запрос на добавление данных в таблицу ордеров агента'{name}'.")
     try:
-        logger_agent.debug(f"Запрос на добавление данных в таблицу ордеров '{name}'.")
         db_path = os.path.join(os.path.join(global_variable.setting_file("folder_path"), name), f'agent_data_{name}.sqlite')
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
@@ -185,7 +187,7 @@ def insert_data_order(name, data):
         # print(f"Длина первого кортежа: {len(data)}")
 
         cursor.executemany(f"""
-            INSERT INTO 'trade{name}' (identifier, time, price, quantity, side)
+            INSERT INTO 'trade' (identifier, time, price, quantity, side)
             VALUES (?, ?, ?, ?, ?);
         """, data)
 
@@ -202,21 +204,21 @@ def clear_data_order_table(name):
 
         :name - имя агента
     """
-    logger_agent.debug(f"Запрос на отчистку таблице ордеров агента 'trade{name}'.")
     db_path = os.path.join(os.path.join(global_variable.setting_file("folder_path"), name), f'agent_data_{name}.sqlite')
+    logger_agent.debug(f"Запрос на отчистку таблице ордеров агента {name}, путь: {db_path}")
     
     # Подключаемся к базе
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
     # Очищаем таблицу
-    cursor.execute(f"DELETE FROM 'trade{name}';")
+    cursor.execute(f"DELETE FROM 'trade';")
 
     # Сохраняем изменения и закрываем соединение
     conn.commit()
     conn.close()
 
-    logger_agent.debug(f"Таблица 'trade{name}' очищена.")
+    logger_agent.debug(f"Таблица 'trade' агента {name} очищена.")
 
 def get_data_trade_table(name):
     """
@@ -224,15 +226,18 @@ def get_data_trade_table(name):
 
         :name - имя агента
     """
+    logger_agent.debug(f"Запрос на получение данных из таблицу ордеров агента '{name}'.")
     db_path = os.path.join(os.path.join(global_variable.setting_file("folder_path"), name), f'agent_data_{name}.sqlite')
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
-    cursor.execute(f"SELECT identifier, time, price, quantity, side FROM 'trade{name}';")
+    cursor.execute(f"SELECT identifier, time, price, quantity, side FROM 'trade';")
     result = cursor.fetchall()
 
     conn.close()
     return result
+
+
 
 # Результаты
 def create_a_results_table(name):
@@ -562,4 +567,482 @@ def insert_data_indicator(name, name_indicator, index_indicator, data):
 
     conn.commit()
     conn.close()
+
+
+
+class TableForAgent():
+    def __init__(self, agent_name):
+        self.db_path = os.path.join(os.path.join(global_variable.setting_file("folder_path"), agent_name), f'agent_data_{agent_name}.sqlite')
+        self.agent_name = agent_name
+    
+    def delete_unwanted_tables(self):
+        """
+            Удаление всех таблиц кроме основных 
+            (используют индикаторы, удаляя все таблицы индикаторов)
+            
+            Аргементы:
+                :name - имя агента
+        """
+        try:
+            logger_agent.debug(f"Запрос на удаление таблиц кроме основных.")
+            # Подключаемся к базе данных
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            # Получаем список всех таблиц
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+            tables = cursor.fetchall()
+
+            keep_tables = [f'{self.agent_name}', 'variable', 'kline', 'trade', 'results', 'optimization']
+            # Итерируем по таблицам
+            for table in tables:
+                table_name = table[0]
+                if table_name not in keep_tables:
+                    # Если таблица не в списке исключений, удаляем ее
+                    cursor.execute(f"DROP TABLE IF EXISTS {table_name};")
+                    logger_agent.info(f"Таблица {table_name} удалена.")
+
+            # Сохраняем изменения и закрываем соединение
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as e:
+            logger_agent.critical(f"Ошибка удаления таблиц БД: {e}")
+            return False
+    
+    # Таблица kline
+    def get_first_row(self):
+        """
+            Получает первую строку из таблицы агента
+            
+            Аргементы:
+                :name - имя агента
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        cursor.execute(f"SELECT * FROM 'kline' ORDER BY time ASC LIMIT 1;")
+        first_row = cursor.fetchone()
+
+        conn.close()
+        return first_row
+
+    def get_last_row(self):
+        """
+            Получает последнюю строку из таблицы агента
+
+            Аргементы:
+                :name - имя агента
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        cursor.execute(f"SELECT * FROM 'kline' ORDER BY time DESC LIMIT 1;")
+        last_row = cursor.fetchone()
+
+        conn.close()
+        return last_row
+    
+    def clear_table(self):
+        """
+            Очистка данных в основной таблице агента
+
+            :name - имя агента
+        """
+        logger_agent.debug(f"Запрос на отчистку таблицы 'kline'.")
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        cursor.execute(f"DELETE FROM 'kline';")
+
+        conn.commit()
+        conn.close()
+        logger_agent.debug(f"Таблица 'kline' очищена.")
+    
+    def insert_data(self, data):
+        """
+            Вставка данных в основную таблицу агента 
+
+            :name - имя агента
+            :data - список кортежей с данными
+        """
+        logger_agent.debug(f"Запрос на добавление данных в основную таблицу 'kline'.")
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        cursor.executemany(f"""
+            INSERT INTO 'kline' (time, open, high, low, close, volume)
+            VALUES (?, ?, ?, ?, ?, ?);
+        """, data)
+
+        conn.commit()
+        conn.close()
+
+    def insert_data_stream(self, data):
+        """
+            Вставка данных в основную таблицу агента с вебсокета.
+            Если значение 'time' последней строки совпадает с входящими данными, строка обновляется.
+            Иначе данные добавляются как новая запись.
+
+            :name - имя агента
+            :data - список кортежей с данными
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        # Получаем последнюю строку
+        cursor.execute(f"SELECT time FROM 'kline' ORDER BY time DESC LIMIT 1;")
+        last_row = cursor.fetchone()  # Получаем кортеж (time,)
+
+        new_time = data[0][0]  # Индекс 0, так как 'time' находится на 1-м месте в кортеже
+
+        if last_row and last_row[0] == new_time:
+            # Обновляем последнюю строку, если 'time' совпадает
+            cursor.execute(f"""
+                UPDATE 'kline'
+                SET open = ?, high = ?, low = ?, close = ?, volume = ?
+                WHERE time = ?;
+            """, (*data[0][1:], new_time))
+        else:
+            # Вставляем новую строку, если 'time' отличается
+            cursor.executemany(f"""
+                INSERT INTO 'kline' (time, open, high, low, close, volume)
+                VALUES (?, ?, ?, ?, ?, ?);
+            """, data)
+
+
+        conn.commit()
+        conn.close()
+    
+    def get_data_main_table(self):
+        """
+            Получает все данные из таблицы агента"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        cursor.execute(f"SELECT * FROM 'kline';")
+        first_row = cursor.fetchall()
+
+        conn.close()
+        return first_row
+        
+    # Таблица ордеров
+    def insert_data_order(self, data):
+        """Запись данных в таблицу ордеров"""
+        logger_agent.debug(f"Запрос на добавление данных в таблицу ордеров агента'{self.agent_name}'.")
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            # Отладочная часть
+            # print(f"Длина первого кортежа: {len(data)}")
+
+            cursor.executemany(f"""
+                INSERT INTO 'trade' (identifier, time, price, quantity, side)
+                VALUES (?, ?, ?, ?, ?);
+            """, data)
+
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as e:
+            logger_agent.critical(f"Ошибка добавление данных: {e}")
+            return False
+        
+    def clear_data_order_table(self):
+        """Очистка данных в таблице ордеров агента"""
+        logger_agent.debug(f"Запрос на отчистку таблице ордеров агента {self.agent_name}, путь: {self.db_path}")
+        
+        # Подключаемся к базе
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        # Очищаем таблицу
+        cursor.execute(f"DELETE FROM 'trade';")
+
+        # Сохраняем изменения и закрываем соединение
+        conn.commit()
+        conn.close()
+
+        logger_agent.debug(f"Таблица 'trade' агента {self.agent_name} очищена.")
+
+    def get_data_trade_table(self):
+        """Получает все данные из таблицы торговли агента"""
+        logger_agent.debug(f"Запрос на получение данных из таблицу ордеров агента '{self.agent_name}'.")
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        cursor.execute(f"SELECT identifier, time, price, quantity, side FROM 'trade';")
+        result = cursor.fetchall()
+
+        conn.close()
+        return result
+    
+    # Результаты
+    def insert_data_to_results_table(self, data, optimization):
+        """
+        Вставка данных в таблицу results с проверкой ideniteration
+
+        :data - данные для вставки в виде кортежа (например, (ideniteration, total_transactions, ...))
+        :optimization (bool) - флаг оптимизации
+        """
+        logger_agent.debug(f"Запрос на вставку данных в таблицу результатов агента: {self.agent_name}")
+
+        # Подключаемся к базе данных
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        if optimization == True:
+            table = 'optimization'
+        else:
+            table = 'results'
+            
+
+        # Извлекаем ideniteration из кортежа (предполагаем, что он первый элемент)
+        ideniteration = data[0]
+
+        # Если ideniteration = 1, удаляем все записи
+        if ideniteration == 1:
+            cursor.execute(f"DELETE FROM {table}")
+
+        # Если ideniteration > 1, оставляем только записи с ideniteration = ideniteration - 1 и удаляем все остальные
+        elif ideniteration > 1:
+            cursor.execute(f"DELETE FROM {table} WHERE ideniteration > {ideniteration - 1}")
+        
+        # Формируем SQL-запрос для вставки данных
+        # Список столбцов в таблице, если он фиксированный
+        columns = ("ideniteration", "total_transactions", "profitable_trades", "unprofitable_trades", "total_profit", 
+                "total_loss", "net_profit", "avg_profit_per_trade", "win_rate", "profit_factor", "expectancy", 
+                "max_drawdown", "recovery_factor", "sharpe_ratio", "calmar_ratio", "roi", "roe", "std_dev", 
+                "avg_trade_duration", "purchase_transaction", "buy_profitable_trades", "buy_unprofitable_trades", 
+                "buy_total_profit", "buy_total_loss", "buy_net_profit", "buy_avg_profit_per_trade", 
+                "buy_win_rate", "buy_profit_factor", "buy_expectancy", "buy_max_drawdown", "buy_recovery_factor", 
+                "buy_sharpe_ratio", "buy_calmar_ratio", "buy_roi", "buy_roe", "buy_std_dev", "buy_avg_trade_duration", 
+                "sales_transaction", "sell_profitable_trades", "sell_unprofitable_trades", "sell_total_profit", 
+                "sell_total_loss", "sell_net_profit", "sell_avg_profit_per_trade", "sell_win_rate", 
+                "sell_profit_factor", "sell_expectancy", "sell_max_drawdown", "sell_recovery_factor", 
+                "sell_sharpe_ratio", "sell_calmar_ratio", "sell_roi", "sell_roe", "sell_std_dev", 
+                "sell_avg_trade_duration")
+        
+        # Формируем SQL-запрос для вставки данных
+        placeholders = ", ".join(["?"] * len(columns))
+        sql = f"INSERT INTO {table} ({', '.join(columns)}) VALUES ({placeholders})"
+
+        # Выполняем вставку
+        cursor.execute(sql, data)
+
+        # Сохраняем изменения и закрываем соединение
+        conn.commit()
+        conn.close()
+    
+    def creating_an_optimization_table(self, data, optimization, variable_data):
+        """
+            Создание таблицы оптимизации, если ее нет и получение данных
+
+            Аргументы:
+                :data - кортеж данных
+                :name_indicator - имя индикатора
+                :index_indicator - индекс индикатора
+            Результат:
+                return: list((period, time, value),)
+        """
+        logger_agent.debug(f"Запрос на создание таблицы оптимизации, если ее нет и получение данных")
+
+        # Подключаемся к базе данных (если не существует, создастся автоматически)
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        # Проверяем, существует ли таблица
+        cursor.execute(f"""
+            CREATE TABLE IF NOT EXISTS optimization1 (
+                        data TEXT,
+                        ideniteration INTEGER,
+                        total_transactions INTEGER,
+                        profitable_trades INTEGER,
+                        unprofitable_trades INTEGER,
+                        total_profit FLOAT,
+                        total_loss FLOAT,
+                        net_profit FLOAT,
+                        avg_profit_per_trade FLOAT,
+                        win_rate FLOAT,
+                        profit_factor FLOAT,
+                        expectancy FLOAT,
+                        max_drawdown FLOAT,
+                        recovery_factor FLOAT,
+                        sharpe_ratio FLOAT,
+                        calmar_ratio FLOAT,
+                        roi FLOAT,
+                        roe FLOAT,
+                        std_dev FLOAT,
+                        avg_trade_duration FLOAT,
+                        purchase_transaction INTEGER,
+                        buy_profitable_trades INTEGER,
+                        buy_unprofitable_trades INTEGER,
+                        buy_total_profit FLOAT,
+                        buy_total_loss FLOAT,
+                        buy_net_profit FLOAT,
+                        buy_avg_profit_per_trade FLOAT,
+                        buy_win_rate FLOAT,
+                        buy_profit_factor FLOAT,
+                        buy_expectancy FLOAT,
+                        buy_max_drawdown FLOAT,
+                        buy_recovery_factor FLOAT,
+                        buy_sharpe_ratio FLOAT,
+                        buy_calmar_ratio FLOAT,
+                        buy_roi FLOAT,
+                        buy_roe FLOAT,
+                        buy_std_dev FLOAT,
+                        buy_avg_trade_duration FLOAT,
+                        sales_transaction INTEGER,
+                        sell_profitable_trades INTEGER,
+                        sell_unprofitable_trades INTEGER,
+                        sell_total_profit FLOAT,
+                        sell_total_loss FLOAT,
+                        sell_net_profit FLOAT,
+                        sell_avg_profit_per_trade FLOAT,
+                        sell_win_rate FLOAT,
+                        sell_profit_factor FLOAT,
+                        sell_expectancy FLOAT,
+                        sell_max_drawdown FLOAT,
+                        sell_recovery_factor FLOAT,
+                        sell_sharpe_ratio FLOAT,
+                        sell_calmar_ratio FLOAT,
+                        sell_roi FLOAT,
+                        sell_roe FLOAT,
+                        sell_std_dev FLOAT,
+                        sell_avg_trade_duration FLOAT
+            )
+        """)
+        conn.commit()
+
+        # Извлекаем ideniteration из кортежа (предполагаем, что он первый элемент)
+        ideniteration = data[0]
+        
+        json_data = json.dumps(variable_data) # Сериализуем данные в JSON-строку
+        new_list = (json_data,) + data  # Вставляем JSON в начало списка
+
+        # Если ideniteration = 1, удаляем все записи
+        if ideniteration == 1:
+            cursor.execute(f"DELETE FROM optimization1")
+
+        # Если ideniteration > 1, оставляем только записи с ideniteration = ideniteration - 1 и удаляем все остальные
+        elif ideniteration > 1:
+            cursor.execute(f"DELETE FROM optimization1 WHERE ideniteration > {ideniteration - 1}")
+        
+        # Формируем SQL-запрос для вставки данных
+        # Список столбцов в таблице, если он фиксированный
+        columns = ("data", "ideniteration", "total_transactions", "profitable_trades", "unprofitable_trades", "total_profit", 
+                "total_loss", "net_profit", "avg_profit_per_trade", "win_rate", "profit_factor", "expectancy", 
+                "max_drawdown", "recovery_factor", "sharpe_ratio", "calmar_ratio", "roi", "roe", "std_dev", 
+                "avg_trade_duration", "purchase_transaction", "buy_profitable_trades", "buy_unprofitable_trades", 
+                "buy_total_profit", "buy_total_loss", "buy_net_profit", "buy_avg_profit_per_trade", 
+                "buy_win_rate", "buy_profit_factor", "buy_expectancy", "buy_max_drawdown", "buy_recovery_factor", 
+                "buy_sharpe_ratio", "buy_calmar_ratio", "buy_roi", "buy_roe", "buy_std_dev", "buy_avg_trade_duration", 
+                "sales_transaction", "sell_profitable_trades", "sell_unprofitable_trades", "sell_total_profit", 
+                "sell_total_loss", "sell_net_profit", "sell_avg_profit_per_trade", "sell_win_rate", 
+                "sell_profit_factor", "sell_expectancy", "sell_max_drawdown", "sell_recovery_factor", 
+                "sell_sharpe_ratio", "sell_calmar_ratio", "sell_roi", "sell_roe", "sell_std_dev", 
+                "sell_avg_trade_duration")
+        
+        # Формируем SQL-запрос для вставки данных
+        placeholders = ", ".join(["?"] * len(columns))
+        sql = f"INSERT INTO optimization1 ({', '.join(columns)}) VALUES ({placeholders})"
+
+        # Выполняем вставку
+        cursor.execute(sql, new_list)
+
+        # Сохраняем изменения и закрываем соединение
+        conn.commit()
+        conn.close()
+
+
+
+
+class TableForIndicator():
+    def __init__(self, agent_name):
+        self.db_path = os.path.join(os.path.join(global_variable.setting_file("folder_path"), agent_name), f'agent_data_{agent_name}.sqlite')
+        self.agent_name = agent_name
+
+    # Индикаторы
+    def creating_an_indicator_table(self, name_indicator, index_indicator):
+        """
+            Создание таблицы индикатора, если ее нет и получение данных
+
+            Аргументы:
+                :name_indicator - имя индикатора
+                :index_indicator - индекс индикатора
+            Результат:
+                return: list((period, time, value),)
+        """
+        logger_agent.debug(f"Запрос на создание таблицы индикатора {name_indicator}{str(index_indicator)}, если ее нет и получение данных")
+
+        # Подключаемся к базе данных (если не существует, создастся автоматически)
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        # Проверяем, существует ли таблица
+        cursor.execute(f"""
+            CREATE TABLE IF NOT EXISTS {name_indicator}{str(index_indicator)} (
+                period FLOAT,
+                time INTEGER,
+                value FLOAT
+            )
+        """)
+        conn.commit()
+
+        cursor.execute(f"SELECT * FROM {name_indicator}{str(index_indicator)}")
+        last_db_entry = cursor.fetchall()
+        last_db_time = last_db_entry if last_db_entry else None
+
+        # Сохраняем изменения и закрываем соединение
+        conn.commit()
+        conn.close()
+        if last_db_time==[]:
+            logger_agent.debug(f"Список значений индикатора {name_indicator}{str(index_indicator)} пуст")
+        return last_db_time
+
+    def clear_table_indicator(self, name_indicator, index_indicator):
+        """
+            Очистка данных в таблице индикатора
+
+            Аргументы:
+                :name_indicator - имя индикатора
+                :index_indicator - индекс индикатора
+        """
+        logger_agent.debug(f"Запрос на отчистку таблицы индикатора {name_indicator}{str(index_indicator)}")
+        
+        # Подключаемся к базе
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        # Очищаем таблицу
+        cursor.execute(f"DELETE FROM {name_indicator}{str(index_indicator)};")
+
+        # Сохраняем изменения и закрываем соединение
+        conn.commit()
+        conn.close()
+
+        logger_agent.debug(f"Таблица {name_indicator}{index_indicator} очищена.")
+
+    def insert_data_indicator(self, name_indicator, index_indicator, data):
+        """
+            Вставка данных в основную таблицу агента 
+
+            Аргументы:
+                :name_indicator - имя индикатора
+                :index_indicator - индекс индикатора
+                :data - список кортежей с данными
+        """
+        logger_agent.debug(f"Запрос на добавление данных в таблицу индикатора {name_indicator}{index_indicator}.")
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        cursor.executemany(f"""
+            INSERT INTO {name_indicator}{str(index_indicator)} (period, time, value)
+            VALUES (?, ?, ?);
+        """, data)
+
+        conn.commit()
+        conn.close()
+
 

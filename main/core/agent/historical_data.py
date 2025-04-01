@@ -57,10 +57,10 @@ def time_to_ms_bybit(time_str):
     unit = time_str
     return units.get(unit, 0)  # Возвращаем значение в мс
 
-def clearT(name):
+def clearT(name, table_for_agents):
     """Удаляет данные из основной таблицы"""
-    table_for_agent.clear_table(name)
-    table_for_agent.delete_unwanted_tables(name)
+    table_for_agents.clear_table()
+    table_for_agents.delete_unwanted_tables()
 
 
 def filter_unique_and_second_occurrences(data):
@@ -83,18 +83,22 @@ def filter_unique_and_second_occurrences(data):
 
 
 class HistoricalData():
-    def __init__(self, agent_name, setting_data, coin, interval, backtest=None):
+    def __init__(self, agent_name, setting_data, symbol, interval, backtest=None, table_for_agents=None):
+        # С версии 0.0.1 не нужна ↓
         self.list_inter_binance = ["1s", "1m", "5m", "15m", "1h", "2h", "1d", "1W", "1M"] # Список разрешенных интервалов
         self.list_inter_bybit = ["1", "3", "5", "15", "30", "60", "120", "240", "360", "720", "D", "W", "M"] # Список разрешенных интервалов
+
         self.setting_data = setting_data # Полечаем настройки агента по его имени
-        self.coin = coin
+        self.symbol = symbol
         self.interval = interval
         self.backtest = backtest
         self.result = None  # Переменная для хранения результата
-        self.setting_data_sub = setting_data["sub_option"]
+        self.setting_data_sub = setting_data["sub_option"] # Под опция, содержит значение конечной точки для биржи
+        self.table_for_agent = table_for_agents
 
-        # Проверяем корректность
-        if self.coin == None:
+
+        # С версии 0.0.1 не нужна ↓
+        if self.symbol == None:
             logger_agent.info(f"В агенте {agent_name}, название монеты не задано")
             self.result = False
             return 
@@ -120,13 +124,13 @@ class HistoricalData():
         """
             Загружает исторические данные с биржи binance 
         """
-        # Проверка коректности ввода интервала
+        # С версии 0.0.1 не нужна ↓
         if self.interval not in self.list_inter_binance:
             logger_agent.info(f"Интерал введен не коректно, попробуйте использовать символы (1s, m, h, 1d, 1W, 1M)")
             return False
 
         # Устанавливаем параметры
-        COIN = self.coin
+        SYMBOL = self.symbol
         INTEVAL = self.interval
         START = int(datetime.combine(start_date, datetime.min.time()).timestamp() * 1000)
         if self.backtest == False or current_date_enabled == True:
@@ -139,8 +143,8 @@ class HistoricalData():
             logger_agent.info(f"Проверьте заданное время: начальное время превышает конечное")
             return False
 
-        first = table_for_agent.get_first_row(agent_name) # Получает первую строку из таблицы агента. first[3] - время 
-        last = table_for_agent.get_last_row(agent_name) # Получает последнюю строку из таблицы агента. last[3] -
+        first = self.table_for_agent.get_first_row() # Получает первую строку из таблицы агента. first[3] - время 
+        last = self.table_for_agent.get_last_row() # Получает последнюю строку из таблицы агента. last[3] -
         
         logger_agent.debug(f"start {START}, end {END}, Первая строка: {first}, Последняя строка: {last}")
 
@@ -150,29 +154,29 @@ class HistoricalData():
             self.setting_data_sub = self.setting_data_sub
 
         """Проверяем если разница времени начала загруженых исторических данных не отличается больше чем на интервал в настройках и БД и интервал не изменился, 
-        проверяем разницу времени конца загруженных данных отличается от настроек меньше чем на интервал то ничего не делаем, если  больше то меняем START для подгрузки свежих данных 
+        проверяем разницу времени конца загруженных данных отличается от настроек меньше чем на интервал то ничего не делаем, если больше то меняем START для подгрузки свежих данных 
         или стипраем все данные и записываем заново"""
         if first != None:
-            if abs(START - first[3]) <= time_to_ms_binance(INTEVAL) and first[2] == INTEVAL:
-                if END - last[3] < time_to_ms_binance(INTEVAL):
+            if abs(START - first[0]) <= time_to_ms_binance(INTEVAL):
+                if END - last[0] < time_to_ms_binance(INTEVAL):
                     return True
                 else:
-                    START = last[3]+time_to_ms_binance(INTEVAL)
+                    START = last[0]+time_to_ms_binance(INTEVAL)
             else:
-                clearT(agent_name)
+                clearT(agent_name, self.table_for_agent)
         else:
-            clearT(agent_name)
+            clearT(agent_name, self.table_for_agent)
 
         # Промежуток от начала до конца делим на части т.к. API биржи не дает больже 1000 значений
         try:
             for interval in split_range(START, END, time_to_ms_binance(INTEVAL)):
-                kline = klines(self.setting_data_sub, COIN, INTEVAL, limit=1000, startTime=int(interval[0]), endTime=int(interval[1]))
+                kline = klines(self.setting_data_sub, SYMBOL, INTEVAL, limit=1000, startTime=int(interval[0]), endTime=int(interval[1]))
                 data = []
                 for k in kline:
                     # Собераем порцию данных в список кортежей
-                    data.append((self.setting_data["exchange"], COIN, INTEVAL, k[0], float(k[1]), float(k[2]), float(k[3]), float(k[4]), float(k[5])))
+                    data.append((k[0], float(k[1]), float(k[2]), float(k[3]), float(k[4]), float(k[5])))
                 data = filter_unique_and_second_occurrences(data)
-                table_for_agent.insert_data(agent_name, data) # Запись данных в таблицу
+                self.table_for_agent.insert_data(data) # Запись данных в таблицу
             return True
         except Exception as e:
             logger_agent.warning(f"Ошибка загрузки исторических данных {e}")
@@ -181,13 +185,13 @@ class HistoricalData():
         """
             Загружает исторические данные с биржи bybit 
         """  
-
+        # С версии 0.0.1 не нужна ↓
         if self.interval not in self.list_inter_bybit:
             logger_agent.info(f"Интерал введен не коректно, Доступные интервалы: 1 3 5 15 30 60 120 240 360 720 (мин) D (день) W (неделя) M (месяц) указать строкой")
             return False
 
         # Устанавливаем параметры
-        COIN = self.coin
+        SYMBOL = self.symbol
         INTEVAL = time_to_ms_bybit(self.interval)
         INTEVAL_GET = time_to_bybit(self.interval)
         START = int(datetime.combine(start_date, datetime.min.time()).timestamp() * 1000)
@@ -200,8 +204,8 @@ class HistoricalData():
             logger_agent.info(f"Проверьте заданное время: начальное время превышает конечное")
             return False
         
-        first = table_for_agent.get_first_row(agent_name)
-        last = table_for_agent.get_last_row(agent_name)
+        first = self.table_for_agent.get_first_row()
+        last = self.table_for_agent.get_last_row()
         
         # Для отладки
         logger_agent.debug(f"start {START}, end {END}, Первая строка: {first}, Последняя строка: {last}")
@@ -215,26 +219,26 @@ class HistoricalData():
         проверяем разницу времени конца загруженных данных отличается от настроек меньше чем на интервал то ничего не делаем, если  больше то меняем START для подгрузки свежих данных 
         или стипраем все данные и записываем заново"""
         if first != None:
-            if abs(START - first[3]) <= INTEVAL and first[2] == self.interval:
-                if END - last[3] < INTEVAL:
+            if abs(START - first[0]) <= INTEVAL:
+                if END - last[0] < INTEVAL:
                     return True
                 else:
-                    START = last[3] + INTEVAL
+                    START = last[0] + INTEVAL
             else:
-                clearT(agent_name)
+                clearT(agent_name, self.table_for_agent)
         else:
-            clearT(agent_name)
+            clearT(agent_name, self.table_for_agent)
 
         # Промежуток от начала до конца делим на части т.к. API биржи не дает больже 1000 значений
         try:
             for interval in split_range(START, END, time_to_ms_bybit(self.interval)):
-                kline = Market(testnet=self.setting_data_sub).klines(COIN, INTEVAL_GET, limit=1000, start=int(interval[0]), end=int(interval[1]))
+                kline = Market(testnet=self.setting_data_sub).klines(SYMBOL, INTEVAL_GET, limit=1000, start=int(interval[0]), end=int(interval[1]))
                 data = []
                 for k in kline:
                     # Собераем порцию данных в список кортежей
-                    data.append((self.setting_data["exchange"], COIN, self.interval, int(k[0]), float(k[1]), float(k[2]), float(k[3]), float(k[4]), float(k[5])))
+                    data.append((int(k[0]), float(k[1]), float(k[2]), float(k[3]), float(k[4]), float(k[5])))
                 data = filter_unique_and_second_occurrences(data)
-                table_for_agent.insert_data(agent_name, data[::-1]) # Запись данных в таблицу
+                self.table_for_agent.insert_data(data[::-1]) # Запись данных в таблицу
             return True
         except Exception as e:
             logger_agent.warning(f"Ошибка загрузки исторических данных {e}")

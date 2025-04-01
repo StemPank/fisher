@@ -1,5 +1,6 @@
 import os, pickle
 import shutil
+from datetime import date
 
 import paths, global_variable, gui.texts as texts, config
 import core.gui.table_for_agent as table_for_agent
@@ -11,19 +12,24 @@ from utils.logging import logger
     Файл отвечает за создание и удаление файлов
 """
 
-def create_defolt_file_setting():
+def create_defolt_file_setting(path):
     """
         Создание основного файла настроек если его не существует
     """
     if not os.path.exists(paths.SETTING_FILE):
+        folder_path = f"{path}/agents"
         state = {
             "language": "russian",                  # язык интерфейса
-            "folder_path": "C:/PY/fisher/agents",   # путь до агентов
+            "folder_path": folder_path,   # путь до агентов
         } 
+        if not os.path.exists(folder_path):
+            os.mkdir(folder_path)
         with open(paths.SETTING_FILE, "wb") as file:
             pickle.dump(state, file)
-
         logger.debug(f"Создание основного файла настроек: {state}")
+        return True, folder_path
+    else:
+        return False, None
 
 class New_file():
     """
@@ -64,9 +70,8 @@ class New_file():
                 logger.debug(f"Папка агента существует")
             result["folder"] = True
         except Exception as e:
-            logger.warning(f"Ошибка создания папки агента: {e}")
-
-        
+            logger.critical(f"Ошибка создания папки агента: {e}")
+            result["folder"] = False
 
         try:    
             exchange_ = self.selected_exchange.upper()
@@ -81,9 +86,9 @@ class New_file():
             else:
                 logger.debug(f"Файл агента существует")
             result["main_file"] = True
-            
         except Exception as e:
-            logger.warning(f"Ошибка создания файда py агента: {e}")
+            logger.critical(f"Ошибка создания файда py агента: {e}")
+            result["main_file"] = False
 
         try:
             if self.selected_exchange in self.exchange_options:
@@ -91,18 +96,17 @@ class New_file():
             settings = {
                 "exchange": exchange,
                 "sub_option": sub_option[0],
-                "start_date": global_variable.current_date(),
-                "end_date": global_variable.current_date(),
+                "start_date": date.today(),
+                "end_date": date.today(),
                 "current_date_enabled": True,
             }
-            
             with open(settings_file_path, "wb") as file:
                 pickle.dump(settings, file)
-                
             result["setting_file"] = True
             logger.debug(f"Файл настроек агента созданы {settings}")
         except Exception as e:
-            logger.warning(f"Ошибка создания файда настроек агнета: {e}")
+            logger.critical(f"Ошибка создания файда настроек агнета: {e}")
+            result["setting_file"] = False
 
         try:    
             # Создаем БД
@@ -110,7 +114,8 @@ class New_file():
             result["db_file"] = True
             logger.debug(f"Файл БД агента создан")
         except Exception as e:
-            logger.warning(f"Ошибка создания БД: {e}")
+            logger.critical(f"Ошибка создания БД: {e}")
+            result["db_file"] = False
         
         logger.debug(f"Результат создания файлов агента {result}")
         if result["folder"] and result["main_file"] and result["setting_file"] and result["db_file"]:

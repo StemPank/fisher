@@ -56,10 +56,24 @@ console_handler.setLevel(logging.INFO)  # Выводит только INFO и в
 console_formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 console_handler.setFormatter(console_formatter)
 
+class TelegramHandler(logging.Handler):
+    def emit(self, record):
+        try:
+            from gui.bot.telegram_bot import TelegramBot
+            message = f"🚨 {record.levelname}: {record.getMessage()}"
+            TelegramBot.send_message(message)
+        except Exception as e:
+            logger.error(f"Ошибка отправки в Telegram: {e}")
+
+telegram_handler = TelegramHandler()
+telegram_handler.setLevel(logging.WARNING)  # Отправлять WARNING и выше
+
 # Добавляем обработчики в логгер
 logger.addHandler(file_handler)
 logger.addHandler(console_handler)
+logger.addHandler(telegram_handler)
 
 # Добавляем обработчики в логгер
 logger_agent.addHandler(file_handler)
 logger_agent.addHandler(console_handler)
+logger_agent.addHandler(telegram_handler)

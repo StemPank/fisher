@@ -16,3 +16,9 @@ LIST_OF_AVAILABLE_BASE_ENDPOINTS = {
             #   "https://api.bytick.com"
             ]
 }
+
+LIST_PAIR = ["BTCUSDT", "ATRUSDT", "ETHUSDT"]
+LIST_INTERVALS = {
+    "binance" : ["1s", "1m", "5m", "15m", "1h", "2h", "1d", "1W", "1M"],
+    'bybit' : ["1", "3", "5", "15", "30", "60", "120", "240", "360", "720", "D", "W", "M"]
+}

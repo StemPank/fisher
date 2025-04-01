@@ -16,18 +16,20 @@ formatter = logging.Formatter(
 )
 file_handler.setFormatter(formatter)
 logger_global_variable.addHandler(file_handler)
+
 def get_caller_info():
+    """Определяет адрес, откуда был вызван модуль(для логов)"""
     frame = inspect.currentframe().f_back.f_back  # Два уровня вверх: (1) текущая функция, (2) вызывающая функция
     filename = frame.f_code.co_filename
     lineno = frame.f_lineno
     return filename, lineno
 
-def current_date():
-    """
-        Получение текущей даты
-    """
-    current_date = date.today()
-    return current_date
+# def current_date():
+#     """
+#         Получение текущей даты
+#     """
+#     current_date = date.today()
+#     return current_date
 
 _settings_cache = None  # Кеш настроек
 _settings_mtime = 0  # Время последнего изменения файла
@@ -87,8 +89,7 @@ def setting_agent_file(agent_name, key = None):
                 logger_global_variable.debug(f"Получение данных из файла настроек агента: {state}", extra={"caller_filename": caller_filename, "caller_lineno": caller_lineno})
                 return state
 
-# LANGUAGE = setting_file("language")
-# AGENTS_FOLDER = setting_file("folder_path")
+# print(setting_file("folder_path"))
 
 def registered_data_providers(key=None, exc=None):
     """
@@ -99,7 +100,7 @@ def registered_data_providers(key=None, exc=None):
             exc (bool) = None: метка получения постащика по имени
 
         Returns:
-            (key != None, exc = True) str: получает имя, поставшика и ключи. Пример: ('binance1', 'binance', '1223456api', '654321api')
+            (key != None, exc = True) str: получает имя. Пример: ('binance')
             (key != None) str: получает имя, поставшика и ключи. Пример: ('binance1', 'binance', '1223456api', '654321api')
             (key = None) str: получает список имен добавленных поставщиков данных
     """
@@ -110,7 +111,7 @@ def registered_data_providers(key=None, exc=None):
     for clue, value in os.environ.items():
         if clue.startswith("PROVIDER_"):
             name, exchange, api_key, secret_key = value.split("|")
-            if key == name and exc == None:
+            if key == name and exc == None or key == exchange and exc == None:
                 logger_global_variable.debug(f"Получение данных поставщика по имени: {name}", extra={"caller_filename": caller_filename, "caller_lineno": caller_lineno})
                 return name, exchange, api_key, secret_key
             if key == name and exc == True:

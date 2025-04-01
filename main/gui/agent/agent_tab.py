@@ -9,6 +9,7 @@ from PyQt5.QtCore import QSize, Qt
 import paths, global_variable, gui.texts as texts
 import gui.agent.dialogs as dialogs
 import core.gui.defot_file as defot_file
+from core.gui.table_for_agent import Table_for_gui
 
 from utils.logging import logger
 
@@ -176,7 +177,19 @@ class AgentTab(QWidget):
             :agent_name (str) - имя агента
         """
         logger.debug(f"Нажата кнопка запуска агента {agent_name}")
-        res = self.agent_manager.start_agent(agent_name)
+        self.table_agent = Table_for_gui(agent_name, global_variable.setting_file("folder_path"))
+        row = self.table_agent.get_data_main_table()
+        if row == []:
+            logger.error(f"Параметры агента не настроены (Зайдите в агента и сохраните начальные параметры)")
+            return
+        variables = self.table_agent.get_all_variables()
+        logger.debug(f"Переданные параметры {(row[0][0], row[0][1], row[0][2], row[0][3])} переменные {variables}")
+        res = self.agent_manager.start_agent(agent_name, 
+                                             row[0][0], 
+                                             row[0][1], 
+                                             row[0][2],  
+                                             row[0][3], 
+                                             variables)
         if res:
             self.start_button.setIcon(QIcon(os.path.join(paths.ICONS_PATH, "icon-play-pressed.png")))
     
@@ -224,7 +237,6 @@ class AgentTab(QWidget):
             agent_name = self.agent_table.item(row, column).text()
             logger.debug(f"Было двойное нажатие по агенту {agent_name}")
             self.parent.open_agent_tab(agent_name)
-
 
 
     def save_state(self):
@@ -286,3 +298,48 @@ class AgentTab(QWidget):
                     widget = self.agent_table.cellWidget(row_position, column)
                     if widget:
                         widget.setEnabled(False)
+
+
+
+def start_agent_from_bot(agent_name):
+    """
+        Запускает агента.
+
+        :agent_name (str) - имя агента
+    """
+    logger.debug(f"Запуска агента {agent_name} по команде из телеграмм бота")
+    from core.gui.agent_manager import AgentManager
+    agent_manager = AgentManager()
+    table_agent = Table_for_gui(agent_name, global_variable.setting_file("folder_path"))
+    row = table_agent.get_data_main_table()
+    if row == []:
+        logger.error(f"Параметры агента не настроены (Зайдите в агента и сохраните начальные параметры)")
+        return False
+    variables = table_agent.get_all_variables()
+    logger.debug(f"Переданные параметры {(row[0][0], row[0][1], row[0][2], row[0][3])} переменные {variables}")
+    res = agent_manager.start_agent(agent_name, 
+                                        row[0][0], 
+                                        row[0][1], 
+                                        row[0][2],  
+                                        row[0][3], 
+                                        variables)
+
+def stop_agent_from_bot(agent_name):
+        """
+            Останавливает агента.
+
+            :agent_name (str) - имя агента
+        """
+        logger.debug(f"Остановка агента {agent_name} по команде из телеграмм бота")
+        from core.gui.agent_manager import AgentManager
+        agent_manager = AgentManager()
+        res = agent_manager.stop_agent(agent_name)
+
+def get_list_agent():
+    try:
+        if not os.path.exists(paths.AGENT_REPOSITORY):
+            return False
+        agent_folders = [folder for folder in os.listdir(paths.AGENT_REPOSITORY) if os.path.isdir(os.path.join(paths.AGENT_REPOSITORY, folder))]
+        return agent_folders
+    except:
+        return False

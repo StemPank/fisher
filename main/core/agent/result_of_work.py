@@ -1,9 +1,9 @@
 
-import core.agent.table_for_agent as table_for_agent
+# import core.agent.table_for_agent as table_for_agent
 import numpy as np
 
-def calculation_of_results(name, iteration_value, commission, initial_balance = 10000, leverage=1):
-    order_data = table_for_agent.get_data_trade_table(name)
+def calculation_of_results(name, iteration_value, commission, optimization, variable_data, table_for_agent, initial_balance = 10000, leverage=1):
+    order_data = table_for_agent.get_data_trade_table()
 
     order_groups = {}
     # Группируем сделки по identifier
@@ -132,12 +132,21 @@ def calculation_of_results(name, iteration_value, commission, initial_balance = 
     lensales_transaction = len(sales_transaction)
     data_for_table = (iteration_value, total_trades, profitable_trades, unprofitable_trades, total_profit, total_loss, net_profit, 
             avg_profit_per_trade, win_rate, profit_factor, expectancy, max_drawdown, recovery_factor, 
-            sharpe_ratio, calmar_ratio, roi, roe, std_dev, avg_trade_duration, lenpurchase_transaction, buy_profitable_trades, buy_unprofitable_trades, buy_total_profit, buy_total_loss, buy_net_profit, 
+            sharpe_ratio, calmar_ratio, roi, roe, std_dev, avg_trade_duration, 
+            lenpurchase_transaction, buy_profitable_trades, 
+            buy_unprofitable_trades, buy_total_profit, buy_total_loss, buy_net_profit, 
             buy_avg_profit_per_trade, buy_win_rate, buy_profit_factor, buy_expectancy, buy_max_drawdown, buy_recovery_factor, 
-            buy_sharpe_ratio, buy_calmar_ratio, buy_roi, buy_roe, buy_std_dev, buy_avg_trade_duration, lensales_transaction, sell_profitable_trades, sell_unprofitable_trades, sell_total_profit, sell_total_loss, sell_net_profit, 
+            buy_sharpe_ratio, buy_calmar_ratio, buy_roi, buy_roe, buy_std_dev, buy_avg_trade_duration, 
+            lensales_transaction, sell_profitable_trades, sell_unprofitable_trades, sell_total_profit, sell_total_loss, sell_net_profit, 
             sell_avg_profit_per_trade, sell_win_rate, sell_profit_factor, sell_expectancy, sell_max_drawdown, sell_recovery_factor, 
             sell_sharpe_ratio, sell_calmar_ratio, sell_roi, sell_roe, sell_std_dev, sell_avg_trade_duration)
-    record_to_table = table_for_agent.insert_data_to_results_table(name, data_for_table)
+    
+    if optimization!=True:
+        record_to_table = table_for_agent.insert_data_to_results_table(data_for_table, optimization)
+    elif optimization==True:
+        record_to_table = table_for_agent.creating_an_optimization_table(data_for_table, optimization, variable_data)
+    
+    
     # print(f"Текущий баланс: {equity_curve[-1]:.2f}")
     # print(equity_curve)
     # print(f"Всего сделок {len(total_transactions)}")
